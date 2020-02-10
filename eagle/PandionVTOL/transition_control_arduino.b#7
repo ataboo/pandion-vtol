@@ -657,8 +657,10 @@ design rules under a new name.</description>
 <contactref element="X3" pad="2"/>
 <wire x1="139.7" y1="52.07" x2="105.41" y2="52.07" width="0.1524" layer="16"/>
 <wire x1="105.41" y1="52.07" x2="104.14" y2="53.34" width="0.1524" layer="16"/>
-<wire x1="104.14" y1="53.34" x2="104.14" y2="76.2" width="0.1524" layer="16"/>
 <wire x1="104.14" y1="76.2" x2="106.68" y2="78.74" width="0.1524" layer="16"/>
+<wire x1="104.14" y1="53.34" x2="104.14" y2="67.31" width="0.1524" layer="16"/>
+<wire x1="104.14" y1="76.2" x2="104.14" y2="67.31" width="0.1524" layer="16"/>
+<wire x1="104.14" y1="67.31" x2="104.14" y2="67.31" width="0.1524" layer="16"/>
 </signal>
 <signal name="A4">
 <contactref element="ARDUINO_NANO1" pad="8"/>

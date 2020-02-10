@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AtaLogger_h
+#define AtaLogger_h
 
 #include <stdarg.h>
 #include <string.h>
@@ -25,26 +26,13 @@ enum LogLevel {
     CRITICAL
 };
 
-class AtaLogger {
-    public:
-      AtaLogger();
-      void setDefaultLogLevel(LogLevel level);
-      void setTagLogLevel(const char* tag, enum LogLevel level);
+void alog_debug(const char* tag, const char* format, ...);
+void alog_info(const char* tag, const char* format, ...);
+void alog_warn(const char* tag, const char* format, ...);
+void alog_error(const char* tag, const char* format, ...);
+void alog_critical(const char* tag, const char* format, ...);
 
-      void debug(const char* tag, const char* format, ...);
-      void info(const char* tag, const char* format, ...);
-      void warning(const char* tag, const char* format, ...);
-      void error(const char* tag, const char* format, ...);
-      void critical(const char* tag, const char* format, ...);
+void alog_set_log_level(const char* tag, LogLevel level);
+void alog_set_default_level(LogLevel level);
 
-    private:
-      enum LogLevel getLogLevel(const char* tag);
-      void logAtLevel(LogLevel level, const char* tag, const char* format, va_list args);
-      void writeToSerial(const char* tag, const char * format, ...);
-      void writeToSerial(const char* tag, const char* format, va_list args);
-      char _lineBuffer[AtaLoggerLineLength];
-      char _fmtBuffer[AtaLoggerLineLength];
-      const char* _tag_level_tags[AtaLoggerMaxTagCount] = { nullptr };
-      LogLevel _tag_level_levels[AtaLoggerMaxTagCount] = { INFO };
-      LogLevel _default_log_level = INFO;
-};
+#endif

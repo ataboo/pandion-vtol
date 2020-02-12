@@ -68,11 +68,11 @@ static void mcpwm_example_brushed_motor_control(void *arg)
         vTaskDelay(2000 / portTICK_RATE_MS);
 
         brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
-
         vTaskDelay(1000/portTICK_RATE_MS);
 
         brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, 25.0);
         vTaskDelay(2000 / portTICK_RATE_MS);
+        
         brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
         vTaskDelay(2000 / portTICK_RATE_MS);
     }

@@ -1005,9 +1005,9 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <label x="5.08" y="68.58" size="1.778" layer="95"/>
 </segment>
 <segment>
-<pinref part="IC1" gate="G$1" pin="3-4EN"/>
-<wire x1="144.78" y1="45.72" x2="157.48" y2="45.72" width="0.1524" layer="91"/>
-<label x="154.94" y="45.72" size="1.778" layer="95" align="bottom-right"/>
+<pinref part="IC1" gate="G$1" pin="4A"/>
+<wire x1="144.78" y1="76.2" x2="157.48" y2="76.2" width="0.1524" layer="91"/>
+<label x="154.94" y="76.2" size="1.778" layer="95" align="bottom-right"/>
 </segment>
 </net>
 <net name="D5" class="1">
@@ -1145,9 +1145,9 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <label x="5.08" y="73.66" size="1.778" layer="95"/>
 </segment>
 <segment>
-<pinref part="IC1" gate="G$1" pin="4A"/>
-<wire x1="144.78" y1="76.2" x2="157.48" y2="76.2" width="0.1524" layer="91"/>
-<label x="154.94" y="76.2" size="1.778" layer="95" align="bottom-right"/>
+<pinref part="IC1" gate="G$1" pin="3-4EN"/>
+<wire x1="144.78" y1="45.72" x2="157.48" y2="45.72" width="0.1524" layer="91"/>
+<label x="154.94" y="45.72" size="1.778" layer="95" align="bottom-right"/>
 </segment>
 </net>
 <net name="M2A" class="1">

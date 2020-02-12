@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="9.5.2">
+<eagle version="9.2.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -923,6 +923,12 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <sheets>
 <sheet>
 <plain>
+<text x="-5.08" y="71.12" size="1.778" layer="91">PWM</text>
+<text x="-5.08" y="66.04" size="1.778" layer="91">PWM</text>
+<text x="-5.08" y="63.5" size="1.778" layer="91">PWM</text>
+<text x="-5.08" y="55.88" size="1.778" layer="91">PWM</text>
+<text x="-5.08" y="53.34" size="1.778" layer="91">PWM</text>
+<text x="-5.08" y="50.8" size="1.778" layer="91">PWM</text>
 </plain>
 <instances>
 <instance part="ARDUINO_NANO1" gate="G$1" x="33.02" y="71.12" smashed="yes">
@@ -989,7 +995,7 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <net name="D3" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D3"/>
-<wire x1="12.7" y1="71.12" x2="2.54" y2="71.12" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="71.12" x2="-5.08" y2="71.12" width="0.1524" layer="91"/>
 <label x="5.08" y="71.12" size="1.778" layer="95"/>
 </segment>
 <segment>
@@ -1001,7 +1007,7 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <net name="D4" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D4"/>
-<wire x1="12.7" y1="68.58" x2="2.54" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="68.58" x2="-5.08" y2="68.58" width="0.1524" layer="91"/>
 <label x="5.08" y="68.58" size="1.778" layer="95"/>
 </segment>
 <segment>
@@ -1013,21 +1019,26 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <net name="D5" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D5"/>
-<wire x1="12.7" y1="66.04" x2="2.54" y2="66.04" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="66.04" x2="-5.08" y2="66.04" width="0.1524" layer="91"/>
 <label x="5.08" y="66.04" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="IC1" gate="G$1" pin="3-4EN"/>
+<wire x1="144.78" y1="45.72" x2="157.48" y2="45.72" width="0.1524" layer="91"/>
+<label x="154.94" y="45.72" size="1.778" layer="95" align="bottom-right"/>
 </segment>
 </net>
 <net name="D6" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D6"/>
-<wire x1="12.7" y1="63.5" x2="2.54" y2="63.5" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="63.5" x2="-5.08" y2="63.5" width="0.1524" layer="91"/>
 <label x="5.08" y="63.5" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="D7" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D7"/>
-<wire x1="12.7" y1="60.96" x2="2.54" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="60.96" x2="-5.08" y2="60.96" width="0.1524" layer="91"/>
 <label x="5.08" y="60.96" size="1.778" layer="95"/>
 </segment>
 </net>
@@ -1081,34 +1092,14 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 </net>
 <net name="5V" class="1">
 <segment>
-<pinref part="IC1" gate="G$1" pin="VCC1"/>
-<wire x1="144.78" y1="81.28" x2="157.48" y2="81.28" width="0.1524" layer="91"/>
-<label x="154.94" y="81.28" size="1.778" layer="95" align="bottom-right"/>
-</segment>
-<segment>
-<pinref part="IC1" gate="G$1" pin="VCC2"/>
-<wire x1="114.3" y1="45.72" x2="101.6" y2="45.72" width="0.1524" layer="91"/>
-<label x="104.14" y="45.72" size="1.778" layer="95"/>
-</segment>
-<segment>
-<pinref part="ARDUINO_NANO1" gate="G$1" pin="5V"/>
-<wire x1="53.34" y1="76.2" x2="63.5" y2="76.2" width="0.1524" layer="91"/>
-<label x="60.96" y="76.2" size="1.778" layer="95" align="bottom-right"/>
-</segment>
-<segment>
 <pinref part="X1" gate="-1" pin="KL"/>
 <wire x1="15.24" y1="27.94" x2="30.48" y2="27.94" width="0.1524" layer="91"/>
 <label x="20.32" y="30.48" size="1.778" layer="95" rot="R180"/>
 </segment>
 <segment>
-<pinref part="COM1" gate="-2" pin="S"/>
-<wire x1="88.9" y1="27.94" x2="78.74" y2="27.94" width="0.1524" layer="91"/>
-<label x="81.28" y="27.94" size="1.778" layer="95"/>
-</segment>
-<segment>
-<pinref part="COM2" gate="-2" pin="S"/>
-<wire x1="88.9" y1="10.16" x2="78.74" y2="10.16" width="0.1524" layer="91"/>
-<label x="81.28" y="10.16" size="1.778" layer="95"/>
+<pinref part="IC1" gate="G$1" pin="VCC2"/>
+<wire x1="114.3" y1="45.72" x2="101.6" y2="45.72" width="0.1524" layer="91"/>
+<label x="104.14" y="45.72" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="GND" class="1">
@@ -1141,13 +1132,8 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <net name="D2" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D2"/>
-<wire x1="12.7" y1="73.66" x2="2.54" y2="73.66" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="73.66" x2="-5.08" y2="73.66" width="0.1524" layer="91"/>
 <label x="5.08" y="73.66" size="1.778" layer="95"/>
-</segment>
-<segment>
-<pinref part="IC1" gate="G$1" pin="3-4EN"/>
-<wire x1="144.78" y1="45.72" x2="157.48" y2="45.72" width="0.1524" layer="91"/>
-<label x="154.94" y="45.72" size="1.778" layer="95" align="bottom-right"/>
 </segment>
 </net>
 <net name="M2A" class="1">
@@ -1201,7 +1187,7 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <net name="D8" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D8"/>
-<wire x1="12.7" y1="58.42" x2="2.54" y2="58.42" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="58.42" x2="-5.08" y2="58.42" width="0.1524" layer="91"/>
 <label x="5.08" y="58.42" size="1.778" layer="95"/>
 </segment>
 <segment>
@@ -1218,14 +1204,14 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 </segment>
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D9"/>
-<wire x1="12.7" y1="55.88" x2="2.54" y2="55.88" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="55.88" x2="-5.08" y2="55.88" width="0.1524" layer="91"/>
 <label x="5.08" y="55.88" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="D10" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D10"/>
-<wire x1="12.7" y1="53.34" x2="2.54" y2="53.34" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="53.34" x2="-5.08" y2="53.34" width="0.1524" layer="91"/>
 <label x="5.08" y="53.34" size="1.778" layer="95"/>
 </segment>
 <segment>
@@ -1237,14 +1223,14 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <net name="D11" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D11"/>
-<wire x1="12.7" y1="50.8" x2="2.54" y2="50.8" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="50.8" x2="-5.08" y2="50.8" width="0.1524" layer="91"/>
 <label x="5.08" y="50.8" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="D12" class="1">
 <segment>
 <pinref part="ARDUINO_NANO1" gate="G$1" pin="D12"/>
-<wire x1="12.7" y1="48.26" x2="2.54" y2="48.26" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="48.26" x2="-5.08" y2="48.26" width="0.1524" layer="91"/>
 <label x="5.08" y="48.26" size="1.778" layer="95"/>
 </segment>
 </net>
@@ -1270,6 +1256,35 @@ Number of pins: &lt;b&gt;2&lt;/b&gt;&lt;b&gt;&lt;P&gt;
 <pinref part="COM2" gate="-3" pin="S"/>
 <wire x1="88.9" y1="7.62" x2="78.74" y2="7.62" width="0.1524" layer="91"/>
 <label x="81.28" y="7.62" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="VCC" class="1">
+<segment>
+<pinref part="ARDUINO_NANO1" gate="G$1" pin="5V"/>
+<wire x1="53.34" y1="76.2" x2="63.5" y2="76.2" width="0.1524" layer="91"/>
+<label x="60.96" y="76.2" size="1.778" layer="95" align="bottom-right"/>
+</segment>
+<segment>
+<pinref part="IC1" gate="G$1" pin="VCC1"/>
+<wire x1="144.78" y1="81.28" x2="157.48" y2="81.28" width="0.1524" layer="91"/>
+<label x="154.94" y="81.28" size="1.778" layer="95" align="bottom-right"/>
+</segment>
+</net>
+<net name="3V3" class="1">
+<segment>
+<pinref part="ARDUINO_NANO1" gate="G$1" pin="3V3"/>
+<wire x1="53.34" y1="50.8" x2="63.5" y2="50.8" width="0.1524" layer="91"/>
+<label x="60.96" y="50.8" size="1.778" layer="95" align="bottom-right"/>
+</segment>
+<segment>
+<pinref part="COM1" gate="-2" pin="S"/>
+<wire x1="88.9" y1="27.94" x2="78.74" y2="27.94" width="0.1524" layer="91"/>
+<label x="81.28" y="27.94" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="COM2" gate="-2" pin="S"/>
+<wire x1="88.9" y1="10.16" x2="78.74" y2="10.16" width="0.1524" layer="91"/>
+<label x="81.28" y="10.16" size="1.778" layer="95"/>
 </segment>
 </net>
 </nets>

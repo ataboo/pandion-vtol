@@ -11,15 +11,20 @@ static const char* TAG = "PANDION_BUS_MIXER";
 
 static void read_task(void *arg) {
     ibus_channel_vals_t values;
-    ibus_duplex_handle_t handle = (ibus_duplex_handle_t)arg;
+    ibus_duplex_handle_t ibus_handle = (ibus_duplex_handle_t)arg;
+    servo_ctrl_handle_t handle = servo_ctrl_init();
+
 
     while(1) {
-        if (ibus_duplex_update(handle) == ESP_OK) {
-            ibus_get_channel_values(handle, &values);
-            ESP_LOGI(TAG, "Vals: %d, %d, %d, %d, %d, %d", values.channels[0], values.channels[1], values.channels[2], values.channels[3], values.channels[4], values.channels[5]);
+        // if (ibus_duplex_update(handle) == ESP_OK) {
+        //     ibus_get_channel_values(handle, &values);
+        //     ESP_LOGI(TAG, "Vals: %d, %d, %d, %d, %d, %d", values.channels[0], values.channels[1], values.channels[2], values.channels[3], values.channels[4], values.channels[5]);
 
+            
+        // }
 
-        }
+        
+
     }
 }
 

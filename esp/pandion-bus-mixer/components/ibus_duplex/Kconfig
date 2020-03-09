@@ -7,7 +7,7 @@ menu "IBus Duplex"
     config IBUS_UART_RX_GPIO
         int "RX UART GPIO Pin"
         range -1 39
-        default -1
+        default 16
 
     config IBUS_UART_RX_BAUD_RATE
         int "RX UART Baud Rate"
@@ -16,7 +16,7 @@ menu "IBus Duplex"
 
     config IBUS_UART_SUMCHK_ACTIVE
         bool "Sum-check Active"
-        default false
+        default true
 
     config IBUS_UART_TX_ACTIVE
         bool "IBus forwarding on"

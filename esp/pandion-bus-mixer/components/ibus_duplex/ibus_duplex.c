@@ -94,7 +94,7 @@ esp_err_t ibus_duplex_update(ibus_duplex_handle_t handle) {
     if (len > 0) {
         len = uart_read_bytes(CONFIG_IBUS_UART_RX_NUM, handle->data_buffer, IBUS_UART_READ_BUFFER_SIZE, 5 / portTICK_RATE_MS);
 #if CONFIG_IBUS_UART_TX_ACTIVE
-        uart_write_bytes(CONFIG_IBUS_UART_TX_NUM, (const char *) data_buffer, len);
+        uart_write_bytes(CONFIG_IBUS_UART_TX_NUM, (const char *) handle->data_buffer, len);
 #endif
 
         return parse_channel_values(handle, handle->data_buffer, len);

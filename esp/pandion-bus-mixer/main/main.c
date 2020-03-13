@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "ibus_duplex.h"
 #include "servo_control.h"
+#include "gyro_control.h"
+#include "esp_log.h"
 
 typedef enum {
     RWTILT_CHAN = 0,
@@ -56,56 +58,76 @@ void app_main()
 {
     esp_log_level_set("*", ESP_LOG_INFO);
 
-    servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RWTILT_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_LWTILT_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RWTRANS_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_LWTRANS_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RWPROP_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_LWPROP_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_AFTPROP_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_ELEVATOR_GPIO
-        },
-        // {
-        //     .min_us = 1000,
-        //     .max_us = 2000,
-        //     .gpio_num = CONFIG_RUDDER_GPIO
-        // }
-    }; 
+    // servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_RWTILT_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_LWTILT_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_RWTRANS_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_LWTRANS_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_RWPROP_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_LWPROP_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_AFTPROP_GPIO
+    //     },
+    //     {
+    //         .min_us = 1000,
+    //         .max_us = 2000,
+    //         .gpio_num = CONFIG_ELEVATOR_GPIO
+    //     },
+    //     // {
+    //     //     .min_us = 1000,
+    //     //     .max_us = 2000,
+    //     //     .gpio_num = CONFIG_RUDDER_GPIO
+    //     // }
+    // }; 
 
-    ibus_handle = ibus_duplex_init();
-    servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
+    // ibus_handle = ibus_duplex_init();
+    // servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
 
-    read_task();
+    if (gyro_control_init() != ESP_OK || gyro_check_status() != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to connect to MPU6050 Gyro");
+        abort();
+    }
+
+    ESP_LOGI(TAG, "Connected to MPU6050 Gyro successfully.");
+    
+
+    gyro_values_t gyro_vals = {};
+
+    while(1) {
+        ESP_ERROR_CHECK_WITHOUT_ABORT(gyro_control_read(&gyro_vals));
+
+        // ESP_LOGI(TAG, "Accel: %d, %d, %d | Gyro: %d, %d, %d", gyro_vals.raw_accel_x, gyro_vals.raw_accel_y, gyro_vals.raw_accel_z, gyro_vals.raw_gyro_x, gyro_vals.raw_gyro_y, gyro_vals.raw_gyro_z);
+
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    // read_task();
 }

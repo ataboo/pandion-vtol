@@ -115,15 +115,13 @@ void app_main()
     }
 
     ESP_LOGI(TAG, "Connected to MPU6050 Gyro successfully.");
-    
 
     gyro_values_t gyro_vals = {};
 
     while(1) {
         ESP_ERROR_CHECK_WITHOUT_ABORT(gyro_control_read(&gyro_vals));
-
-        // ESP_LOGI(TAG, "Accel: %d, %d, %d | Gyro: %d, %d, %d", gyro_vals.raw_accel_x, gyro_vals.raw_accel_y, gyro_vals.raw_accel_z, gyro_vals.raw_gyro_x, gyro_vals.raw_gyro_y, gyro_vals.raw_gyro_z);
-
+        ESP_LOGI("CONSOLE_PLOTTER", "[%8.5f,%8.5f,%8.5f]", gyro_vals.roll_rads, gyro_vals.pitch_rads, gyro_vals.yaw_rads);
+        
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 

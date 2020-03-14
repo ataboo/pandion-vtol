@@ -14,7 +14,7 @@
 #define GYRO_I2C_NUM I2C_NUM_0
 
 #define GYRO_READ_BUFFER_LEN            16
-#define GYRO_ERROR_SAMPLE_COUNT         200
+#define GYRO_ERROR_SAMPLE_COUNT         500
 
 #define MPU6050_RA_WHO_AM_I             0x75
 #define MPU6050_RA_PWR_MGMT_1           0x6B
@@ -31,17 +31,21 @@
 #define MPU6050_CFG_DLPF_BIT            2
 #define MPU6050_CFG_DLPF_LENGTH         3
 
+#define MPU6050_GYRO_RANGE_BIT          4
+#define MPU6050_GYRO_RANGE_LENGTH       2
+
+#define MPU6050_ACCEL_RANGE_BIT         4
+#define MPU6050_ACCEL_RANGE_LENGTH      2
+
 #define MPU6050_PWR1_XAXIS_CLK          0x01
 
-typedef enum {
-    GYRO_LOW_RANGE = 0x00,
-    GYRO_MED_RANGE,
-    GYRO_HIGH_RANGE,
-    GYRO_XHIGH_RANGE
-} gyro_range_t;
+#define GYRO_LOW_RANGE                  0
+#define GYRO_MED_RANGE                  1
+#define GYRO_HIGH_RANGE                 2
+#define GYRO_XHIGH_RANGE                3
 
 #if CONFIG_GYRO_RANGE == GYRO_LOW_RANGE
-    #define MPU6050_GYRO_LSB   131
+    #define MPU6050_GYRO_LSB      131
 #elif CONFIG_GYRO_RANGE == GYRO_MED_RANGE
     #define MPU6050_GYRO_LSB      65.5
 #elif CONFIG_GYRO_RANGE == GYRO_HIGH_RANGE
@@ -51,12 +55,12 @@ typedef enum {
 #endif
 
 #if CONFIG_ACCEL_RANGE == GYRO_LOW_RANGE
-    #define MPU6050_ACCEL_LSB      16384
+    #define MPU6050_ACCEL_LSB     16384
 #elif CONFIG_ACCEL_RANGE == GYRO_MED_RANGE
     #define MPU6050_ACCEL_LSB     8192
 #elif CONFIG_ACCEL_RANGE == GYRO_HIGH_RANGE
     #define MPU6050_ACCEL_LSB     4096
-#elif CONFIG_ACCEL_RANGE == GYRO_XHIGH_RANGE
+#elif CONFIG_GYRO_RANGE == GYRO_XHIGH_RANGE
     #define MPU6050_ACCEL_LSB     2048
 #endif
 
@@ -64,16 +68,15 @@ typedef struct {
     float norm_accel_x;
     float norm_accel_y;
     float norm_accel_z;
-    float norm_gyro_x;
-    float norm_gyro_y;
-    float norm_gyro_z;
+    float accel_x_component;
+    float accel_y_component;
 
     float roll_rads;
     float pitch_rads;
     float yaw_rads;
-    float roll_v;
-    float pitch_v;
-    float yaw_v;
+    float norm_gyro_x;
+    float norm_gyro_y;
+    float norm_gyro_z;
     uint32_t delta_micros;
 } gyro_values_t;
 

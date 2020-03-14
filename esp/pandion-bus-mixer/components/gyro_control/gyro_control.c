@@ -1,6 +1,5 @@
 #include "gyro_control.h"
 
-
 typedef struct {
     float accel_err_x;
     float accel_err_y;
@@ -11,9 +10,9 @@ typedef struct {
 
 typedef struct {
     gyro_error_t* error;
-    float roll;
-    float pitch;
-    float yaw;
+    float gyro_roll;
+    float gyro_pitch;
+    float gyro_yaw;
     unsigned long last_micros;
     unsigned long current_micros;
 } gyro_state_t;
@@ -24,36 +23,36 @@ static gyro_state_t* state;
 static gyro_values_t* value_buffer;
 
 
-static void disp_buf(uint8_t *buf, int len)
-{
-    int i;
-    for (i = 0; i < len; i++) {
-        printf("%02x ", buf[i]);
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
+// static void disp_buf(uint8_t *buf, int len)
+// {
+//     int i;
+//     for (i = 0; i < len; i++) {
+//         printf("%02x ", buf[i]);
+//         if ((i + 1) % 16 == 0) {
+//             printf("\n");
+//         }
+//     }
+//     printf("\n");
+// }
 
-static esp_err_t write_bytes(uint8_t regAddr, size_t size, uint8_t* buffer) {
-    if (size == 0 || size > GYRO_READ_BUFFER_LEN) {
-        return ESP_ERR_INVALID_SIZE;
-    }
+// static esp_err_t write_bytes(uint8_t regAddr, size_t size, uint8_t* buffer) {
+//     if (size == 0 || size > GYRO_READ_BUFFER_LEN) {
+//         return ESP_ERR_INVALID_SIZE;
+//     }
 
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    ESP_ERROR_CHECK(i2c_master_start(cmd));
-    ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (CONFIG_GYRO_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, I2C_MASTER_ACK));
-    ESP_ERROR_CHECK(i2c_master_write_byte(cmd, regAddr, I2C_MASTER_ACK));
-    ESP_ERROR_CHECK(i2c_master_write(cmd, buffer, size-1, I2C_MASTER_NACK));
-    ESP_ERROR_CHECK(i2c_master_write_byte(cmd, buffer[size-1], I2C_MASTER_ACK));
+//     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+//     ESP_ERROR_CHECK(i2c_master_start(cmd));
+//     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (CONFIG_GYRO_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, I2C_MASTER_ACK));
+//     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, regAddr, I2C_MASTER_ACK));
+//     ESP_ERROR_CHECK(i2c_master_write(cmd, buffer, size-1, I2C_MASTER_NACK));
+//     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, buffer[size-1], I2C_MASTER_ACK));
     
-    ESP_ERROR_CHECK(i2c_master_stop(cmd));
-    esp_err_t ret = i2c_master_cmd_begin(GYRO_I2C_NUM, cmd, 1000 / portTICK_PERIOD_MS);
-    i2c_cmd_link_delete(cmd);
+//     ESP_ERROR_CHECK(i2c_master_stop(cmd));
+//     esp_err_t ret = i2c_master_cmd_begin(GYRO_I2C_NUM, cmd, 1000 / portTICK_PERIOD_MS);
+//     i2c_cmd_link_delete(cmd);
 
-    return ret;
-}
+//     return ret;
+// }
 
 static esp_err_t write_byte(uint8_t regAddr, uint8_t data) {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -110,12 +109,12 @@ static esp_err_t read_byte(uint8_t regAddr, uint8_t *data) {
     return read_bytes(regAddr, 1, data);
 }
 
-static uint8_t extract_bit_slice_from_int(uint8_t subject, uint8_t start, uint8_t length) {
-    uint8_t mask = ((1 << length) - 1) << (start - length + 1);  // Create a mask of 1's from start to end
-    subject &= mask;
+// static uint8_t extract_bit_slice_from_int(uint8_t subject, uint8_t start, uint8_t length) {
+//     uint8_t mask = ((1 << length) - 1) << (start - length + 1);  // Create a mask of 1's from start to end
+//     subject &= mask;
 
-    return subject >> (start - length + 1);
-}
+//     return subject >> (start - length + 1);
+// }
 
 static uint8_t combine_bit_slice_into_int(uint8_t subject, uint8_t data, uint8_t start, uint8_t length) {
     uint8_t mask = ((1<<length)-1) << (start - length + 1);  // Create a mask of 1's from start to end
@@ -126,45 +125,51 @@ static uint8_t combine_bit_slice_into_int(uint8_t subject, uint8_t data, uint8_t
     return subject | data;  // Combine subject and data
 }
 
+static esp_err_t set_bits(uint8_t regAddr, uint8_t data, uint8_t start, uint8_t length) {
+    uint8_t val_byte = 0;
+    esp_err_t ret = read_byte(regAddr, &val_byte);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    val_byte = combine_bit_slice_into_int(val_byte, data, start, length);
+
+    return write_byte(regAddr, val_byte);
+}
+
 
 static esp_err_t reset_gyro() {
     return write_byte(MPU6050_RA_PWR_MGMT_1, 1<<MPU6050_PWR1_DEVICE_RESET_BIT);
 }
 
 static esp_err_t set_gyro_config_values() {
-    // Using the XAxis clock, build the full PWR1 register value if we need any other bits set.
+    // Set the clock source as x-axis gyro.  Clear the reset bit as well.
     esp_err_t ret = write_byte(MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_XAXIS_CLK);
 
-    ret |= write_byte(MPU6050_RA_GYRO_CFG, CONFIG_GYRO_RANGE);
-    ret |= write_byte(MPU6050_RA_ACCEL_CFG, CONFIG_ACCEL_RANGE);
+    // Set the gyro and accel range.
+    ret |= set_bits(MPU6050_RA_GYRO_CFG, CONFIG_GYRO_RANGE, MPU6050_GYRO_RANGE_BIT, MPU6050_GYRO_RANGE_LENGTH);
+    ret |= set_bits(MPU6050_RA_ACCEL_CFG, CONFIG_ACCEL_RANGE, MPU6050_ACCEL_RANGE_BIT, MPU6050_ACCEL_RANGE_LENGTH);
 
-    uint8_t config;
-    ret |= read_byte(MPU6050_RA_CONFIG, &config);
-    config = combine_bit_slice_into_int(config, CONFIG_DLPF_CFG_LEVEL, MPU6050_CFG_DLPF_BIT, MPU6050_CFG_DLPF_LENGTH);
-    ret |= write_byte(MPU6050_RA_CONFIG, config);
+    // Set the low pass filter.
+    ret |= set_bits(MPU6050_RA_CONFIG, CONFIG_DLPF_CFG_LEVEL, MPU6050_CFG_DLPF_BIT, MPU6050_CFG_DLPF_LENGTH);
 
     return ret;
 }
 
 static esp_err_t read_gyro_values(gyro_values_t* values, bool apply_error) {
     esp_err_t ret = read_bytes(MPU6050_RA_ACCEL_XOUT, 6, io_buffer);
-    values->norm_accel_x = (float)(io_buffer[0]<<8 | io_buffer[1]);
-    values->norm_accel_y = (float)(io_buffer[2]<<8 | io_buffer[3]);
-    values->norm_accel_z = (float)(io_buffer[4]<<8 | io_buffer[5]);
+    values->norm_accel_x = (int16_t)(io_buffer[0]<<8 | io_buffer[1]);
+    values->norm_accel_y = (int16_t)(io_buffer[2]<<8 | io_buffer[3]);
+    values->norm_accel_z = (int16_t)(io_buffer[4]<<8 | io_buffer[5]);
+
+    if (values->norm_accel_x == 0 || values->norm_accel_y == 0) {
+        return ESP_OK;
+    }
 
     ret |= read_bytes(MPU6050_RA_GYRO_XOUT, 6, io_buffer);
-    values->norm_gyro_x = (io_buffer[0]<<8 | io_buffer[1]) / MPU6050_GYRO_LSB;
-    values->norm_gyro_y = (io_buffer[2]<<8 | io_buffer[3]) / MPU6050_GYRO_LSB;
-    values->norm_gyro_z = (io_buffer[4]<<8 | io_buffer[5]) / MPU6050_GYRO_LSB;
-
-    if (apply_error) {
-        values->norm_accel_x -= state->error->accel_err_x;
-        values->norm_accel_y -= state->error->accel_err_y;
-
-        values->norm_gyro_x -= state->error->gyro_err_x;
-        values->norm_gyro_y -= state->error->gyro_err_y;
-        values->norm_gyro_z -= state->error->gyro_err_z;
-    }
+    values->norm_gyro_x = (int16_t)(io_buffer[0]<<8 | io_buffer[1]);
+    values->norm_gyro_y = (int16_t)(io_buffer[2]<<8 | io_buffer[3]);
+    values->norm_gyro_z = (int16_t)(io_buffer[4]<<8 | io_buffer[5]);
 
     values->norm_accel_x /=  MPU6050_ACCEL_LSB;
     values->norm_accel_y /=  MPU6050_ACCEL_LSB;
@@ -173,10 +178,29 @@ static esp_err_t read_gyro_values(gyro_values_t* values, bool apply_error) {
     values->norm_gyro_y /= MPU6050_GYRO_LSB;
     values->norm_gyro_z /= MPU6050_GYRO_LSB;
 
-    state->current_micros = esp_timer_get_time();
+    values->accel_x_component = ((atan((values->norm_accel_y) / sqrt(pow((values->norm_accel_x), 2) + pow((values->norm_accel_z), 2))) * RAD_TO_DEG));
+    values->accel_y_component = ((atan(-1 * (values->norm_accel_x) / sqrt(pow((values->norm_accel_y), 2) + pow((values->norm_accel_z), 2))) * RAD_TO_DEG));
 
+    if (apply_error) {
+        values->accel_x_component -= state->error->accel_err_x;
+        values->accel_y_component -= state->error->accel_err_y;
+
+        values->norm_gyro_x -= state->error->gyro_err_x;
+        values->norm_gyro_y -= state->error->gyro_err_y;
+        values->norm_gyro_z -= state->error->gyro_err_z;
+    }
+
+    state->current_micros = esp_timer_get_time();
     values->delta_micros = state->current_micros - state->last_micros;
     state->last_micros = state->current_micros;
+
+    state->gyro_roll += values->norm_gyro_x * values->delta_micros / 1e6;
+    state->gyro_pitch += values->norm_gyro_y * values->delta_micros / 1e6;
+    state->gyro_yaw += values->norm_gyro_z * values->delta_micros / 1e6; 
+
+    values->roll_rads = 0.96 * state->gyro_roll + 0.04 * values->accel_x_component;
+    values->pitch_rads = 0.96 * state->gyro_pitch + 0.04 * values->accel_y_component;
+    values->yaw_rads = state->gyro_yaw;
 
     return ret;
 }
@@ -194,8 +218,12 @@ static esp_err_t measure_gyro_error(gyro_error_t* gyro_err) {
             return ret;
         }
 
-        gyro_err->accel_err_x = gyro_err->accel_err_x + ((atan((value_buffer->norm_accel_y) / sqrt(pow((value_buffer->norm_accel_x), 2) + pow((value_buffer->norm_accel_y), 2))) * 180 / PI));
-        gyro_err->accel_err_y = gyro_err->accel_err_y + ((atan(-1 * (value_buffer->norm_accel_x) / sqrt(pow((value_buffer->norm_accel_y), 2) + pow((value_buffer->norm_accel_z), 2))) * 180 / PI));
+        if (value_buffer->norm_accel_x == 0 || value_buffer->norm_accel_y == 0 || value_buffer->norm_accel_z == 0) {
+            continue;
+        }
+
+        gyro_err->accel_err_x += ((atan((value_buffer->norm_accel_y) / sqrt(pow((value_buffer->norm_accel_x), 2) + pow((value_buffer->norm_accel_z), 2))) * 180 / PI));
+        gyro_err->accel_err_y += ((atan(-1 * (value_buffer->norm_accel_x) / sqrt(pow((value_buffer->norm_accel_y), 2) + pow((value_buffer->norm_accel_z), 2))) * 180 / PI));
 
         gyro_err->gyro_err_x += value_buffer->norm_gyro_x;
         gyro_err->gyro_err_y += value_buffer->norm_gyro_y;
@@ -208,14 +236,16 @@ static esp_err_t measure_gyro_error(gyro_error_t* gyro_err) {
     gyro_err->gyro_err_y /= GYRO_ERROR_SAMPLE_COUNT;
     gyro_err->gyro_err_z /= GYRO_ERROR_SAMPLE_COUNT;
 
+    ESP_LOGI(TAG, "Error ax: %f, ay: %f, gx: %f, gy: %f, gz: %f", gyro_err->accel_err_x, gyro_err->accel_err_y, gyro_err->gyro_err_x, gyro_err->gyro_err_y, gyro_err->gyro_err_z);
+
     return ESP_OK;
 }
 
 static esp_err_t callibrate_gyro() {
     esp_err_t ret = measure_gyro_error(state->error);
-    state->roll = 0;
-    state->pitch = 0;
-    state->yaw = 0;
+    state->gyro_roll = 0;
+    state->gyro_pitch = 0;
+    state->gyro_yaw = 0;
 
     return ret;
 }
@@ -241,9 +271,11 @@ esp_err_t gyro_control_init() {
 
     ESP_ERROR_CHECK_WITHOUT_ABORT(reset_gyro());
 
-    vTaskDelay(500/portTICK_PERIOD_MS);
+    vTaskDelay(50/portTICK_PERIOD_MS);
 
     ESP_ERROR_CHECK_WITHOUT_ABORT(set_gyro_config_values());
+
+    vTaskDelay(50/portTICK_PERIOD_MS);
 
     ESP_ERROR_CHECK_WITHOUT_ABORT(callibrate_gyro());
 
@@ -267,10 +299,6 @@ esp_err_t gyro_check_status() {
     uint8_t power_val = -1;
     ESP_ERROR_CHECK_WITHOUT_ABORT(read_byte(MPU6050_RA_PWR_MGMT_1, &power_val));
 
-    return ESP_OK;
-}
-
-static esp_err_t track_value_position() {
     return ESP_OK;
 }
 

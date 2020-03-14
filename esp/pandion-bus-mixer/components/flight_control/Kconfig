@@ -1,0 +1,11 @@
+menu "Pandion Flight Control"
+    config PID_PK
+        string  "PID Position Constant"
+        default 1.0
+    config PID_IK
+        string "PID Integral Constant"
+        default 1.0
+    config PID_DK
+        string "PID Derivative Constant"
+        default 1.0
+endmenu

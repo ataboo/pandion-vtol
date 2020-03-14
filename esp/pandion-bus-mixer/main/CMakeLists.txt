@@ -1,3 +1,3 @@
 idf_component_register(SRCS "main.c" 
 INCLUDE_DIRS ""
-REQUIRES ibus_duplex servo_control gyro_control)
+REQUIRES ibus_duplex servo_control gyro_control flight_control)

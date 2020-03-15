@@ -1,11 +1,31 @@
 menu "Pandion Flight Control"
-    config PID_PK
-        string  "PID Position Constant"
+    config PID_VERT_P_GAIN
+        string  "PID Vertical Position Gain"
         default 1.0
-    config PID_IK
-        string "PID Integral Constant"
+    config PID_VERT_I_GAIN
+        string "PID Vertical Integral Gain"
         default 1.0
-    config PID_DK
-        string "PID Derivative Constant"
+    config PID_VERT_D_GAIN
+        string "PID Vertical Derivative Gain"
+        default 1.0
+
+    config PID_MID_P_GAIN
+        string  "PID Vertical Position Gain"
+        default 1.0
+    config PID_MID_I_GAIN
+        string "PID Vertical Integral Gain"
+        default 1.0
+    config PID_MID_D_GAIN
+        string "PID Vertical Derivative Gain"
+        default 1.0
+
+    config PID_HORIZ_P_GAIN
+        string  "PID Vertical Position Gain"
+        default 1.0
+    config PID_HORIZ_I_GAIN
+        string "PID Vertical Integral Gain"
+        default 1.0
+    config PID_HORIZ_D_GAIN
+        string "PID Vertical Derivative Gain"
         default 1.0
 endmenu

@@ -3,7 +3,15 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import serial
 import re
+import argparse
 
+
+parser = argparse.ArgumentParser(description="Display serial data values in a plot")
+parser.add_argument('--usb_port', nargs='?', help="USB port to read", default="/dev/ttyUSB0")
+parser.add_argument('--baud_rate', nargs='?', help='Baud rate of the connection', default=115200)
+parser.add_argument('-v', '--verbose', help='', action='store_true')
+
+args = parser.parse_args()
 
 fig, ax = plt.subplots()
 x_line, = ax.plot(np.random.rand(10))
@@ -17,7 +25,7 @@ dx_data = [0]*100
 dy_data = [0]*100
 dz_data = [0]*100
 
-raw = serial.Serial("/dev/ttyUSB0", 115200)
+raw = serial.Serial(args.usb_port, args.baud_rate)
 plot_line_pattern = re.compile(r"CONSOLE_PLOTTER: \[(.*)\]")
 
 # raw.open()
@@ -37,8 +45,6 @@ def run(data):
     x_line.set_data(t_data, dx_data)
     y_line.set_data(t_data, dy_data)
     z_line.set_data(t_data, dz_data)
-
-    print("Done")
     
     return x_line, y_line, z_line
 
@@ -48,7 +54,9 @@ def data_gen():
         t+=0.1
         raw_line = str(raw.readline())
         match = plot_line_pattern.search(raw_line)
-        print(raw_line)
+
+        if args.verbose:
+            print(raw_line)
 
         if match:
             split_vals = match.group(1).split(",")
@@ -61,6 +69,8 @@ def data_gen():
             dz = 0
 
         yield t, dx, dy, dz
+
+print("If nothing is happening, reboot the ESP32 as serial will block.")
 
 ani = animation.FuncAnimation(fig, run, data_gen, interval=0, blit=True)
 plt.show()

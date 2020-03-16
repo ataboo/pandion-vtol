@@ -8,6 +8,7 @@ typedef struct {
     float instant_err;
     float integral_err;
     float derivative_err;
+    float output;
 } pid_handle_impl;
 
 pid_handle_t pid_init(const char* name, float instant_gain, float integral_gain, float derivative_gain) {
@@ -21,14 +22,14 @@ pid_handle_t pid_init(const char* name, float instant_gain, float integral_gain,
     return (pid_handle_t)handle;
 }
 
-esp_err_t pid_update(pid_handle_t handle, float target, float current, float *output) {
+esp_err_t pid_update(pid_handle_t handle, float target, float current) {
     pid_handle_impl* handle_impl = (pid_handle_impl*)handle;
     
     handle_impl->derivative_err = current - target - handle_impl->instant_err;
     handle_impl->instant_err = current - target;
     handle_impl->integral_err += handle_impl->instant_err;
 
-    *output = 
+    handle->output = 
         handle_impl->instant_err * handle_impl->instant_gain +
         handle_impl->integral_err * handle_impl->integral_gain +
         handle_impl->derivative_err * handle_impl->derivative_gain;
@@ -52,6 +53,8 @@ esp_err_t pid_set_gains(pid_handle_t handle, float instant_gain, float integral_
     handle_impl->instant_gain = instant_gain;
     handle_impl->integral_gain = integral_gain;
     handle_impl->derivative_gain = derivative_gain;
+
+    return ESP_OK;
 }
 
 esp_err_t pid_terminate(pid_handle_t handle) {

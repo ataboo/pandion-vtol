@@ -5,6 +5,14 @@
 #include "esp_log.h"
 #include "esp_task_wdt.h"
 
+// Mode 2
+#define IBUS_CHAN_ROLL         0  // Right stick L/R
+#define IBUS_CHAN_PITCH        1  // Right stick U/D
+#define IBUS_CHAN_THROTTLE     2  // Left stick U/D
+#define IBUS_CHAN_RUDDER       3  // Left stick L/R
+#define IBUS_CHAN_TRANSITION   4  // R Shoulder 3-position
+#define IBUS_CHAN_ARM          5  // L Shoulder 2-position
+
 typedef struct {
     // Should be 0x20, 0x40 (16416).
     uint16_t preamble;

@@ -1,31 +1,73 @@
 menu "Pandion Flight Control"
-    config PID_VERT_P_GAIN
-        string  "PID Vertical Position Gain"
-        default 1.0
-    config PID_VERT_I_GAIN
-        string "PID Vertical Integral Gain"
-        default 1.0
-    config PID_VERT_D_GAIN
-        string "PID Vertical Derivative Gain"
-        default 1.0
+    config PID_HORIZ_PX_GAIN
+        int  "PID Horizontal X Position Gain"
+        default 1000
+    config PID_HORIZ_IX_GAIN
+        int "PID Horizontal X Integral Gain"
+        default 1000
+    config PID_HORIZ_DX_GAIN
+        int "PID Horizontal X Derivative Gain"
+        default 1000
 
-    config PID_MID_P_GAIN
-        string  "PID Vertical Position Gain"
-        default 1.0
-    config PID_MID_I_GAIN
-        string "PID Vertical Integral Gain"
-        default 1.0
-    config PID_MID_D_GAIN
-        string "PID Vertical Derivative Gain"
-        default 1.0
+    config PID_HORIZ_PY_GAIN
+        int  "PID Horizontal Y Position Gain"
+        default 1000
+    config PID_HORIZ_IY_GAIN
+        int "PID Horizontal Y Integral Gain"
+        default 1000
+    config PID_HORIZ_DY_GAIN
+        int "PID Horizontal Y Derivative Gain"
+        default 1000
 
-    config PID_HORIZ_P_GAIN
-        string  "PID Vertical Position Gain"
-        default 1.0
-    config PID_HORIZ_I_GAIN
-        string "PID Vertical Integral Gain"
-        default 1.0
-    config PID_HORIZ_D_GAIN
-        string "PID Vertical Derivative Gain"
-        default 1.0
+    config PID_HORIZ_PZ_GAIN
+        int  "PID Horizontal Z Position Gain"
+        default 1000
+    config PID_HORIZ_IZ_GAIN
+        int "PID Horizontal Z Integral Gain"
+        default 1000
+    config PID_HORIZ_DZ_GAIN
+        int "PID Horizontal Z Derivative Gain"
+        default 1000
+    
+    config PID_VERT_PX_GAIN
+        int  "PID Vertical X Position Gain"
+        default 1000
+    config PID_VERT_IX_GAIN
+        int "PID Vertical X Integral Gain"
+        default 1000
+    config PID_VERT_DX_GAIN
+        int "PID Vertical X Derivative Gain"
+        default 1000
+
+    config PID_VERT_PY_GAIN
+        int  "PID Vertical Y Position Gain"
+        default 1000
+    config PID_VERT_IY_GAIN
+        int "PID Vertical Y Integral Gain"
+        default 1000
+    config PID_VERT_DY_GAIN
+        int "PID Vertical Y Derivative Gain"
+        default 1000
+
+    config PID_VERT_PZ_GAIN
+        int  "PID Vertical Z Position Gain"
+        default 1000
+    config PID_VERT_IZ_GAIN
+        int "PID Vertical Z Integral Gain"
+        default 1000
+    config PID_VERT_DZ_GAIN
+        int "PID Vertical Z Derivative Gain"
+        default 1000
+        
+    config MAX_ROLL_RATE
+        int "Max roll rate (millideg/sec)"
+        default 45000
+    config MAX_PITCH_RATE
+        int "Max pitch rate (millideg/sec)"
+        default 45000
+    config MAX_YAW_RATE
+        int  "Max yaw rate (millideg/sec)"
+        default 45000
+
+        
 endmenu

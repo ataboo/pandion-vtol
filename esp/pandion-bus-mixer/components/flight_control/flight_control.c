@@ -1,10 +1,10 @@
 #include "flight_control.h"
 
-#define MAX_ROLL_THRUST_DIFFERENTIAL 0.5
-#define MAX_YAW_THRUST_DIFFERENTIAL 0.5
-#define AFT_PROP_FACTOR 0.5
+#define MAX_ROLL_THRUST_DIFFERENTIAL 0.2
+#define MAX_YAW_THRUST_DIFFERENTIAL 0.2
+#define AFT_PROP_FACTOR 0.2
 
-#define CONCAT_PID_CONFIG(TRANS, AXIS)  CONFIG_PID_ ## TRANS ## _ ## AXIS ## _GAIN
+#define CONCAT_PID_CONFIG(TRANS, AXIS)  CONFIG_PID_ ## TRANS ## _ ## AXIS ## _GAIN/1000.0
 
  #define SET_PID_GAINS(TRANS) { \
      pid_set_gains(pitch_pid_handle, CONCAT_PID_CONFIG(TRANS, PX), CONCAT_PID_CONFIG(TRANS, PX), CONCAT_PID_CONFIG(TRANS, PX)); \
@@ -102,8 +102,8 @@ static void update_roll() {
             ));
             break;
         case TRANS_HORIZONTAL:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1 - input_axes.roll));
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, input_axes.roll));
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1-input_axes.roll));
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, 1-input_axes.roll));
             break;
     }
 }
@@ -133,7 +133,7 @@ static void update_yaw() {
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1 - input_axes.yaw));
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, input_axes.yaw));
             ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, input_axes.yaw));
             break;
         case TRANS_HORIZONTAL:

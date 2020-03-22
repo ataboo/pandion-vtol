@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "flight_control.h"
 #include "esp_log.h"
+#include "dshot_esc.h"
 
 static const char* TAG = "PANDION_BUS_MIXER";
 
@@ -20,7 +21,13 @@ void app_main()
 {
     esp_log_level_set("*", ESP_LOG_INFO);
 
-    flight_control_init();
+    // flight_control_init();
 
-    read_task();
+    dshot_handle_t dshot_handle = dshot_init((dshot_cfg){.rmt_chan = 1, .gpio_num = 23});
+
+    dshot_set_throttle(dshot_handle, 1000);
+
+    vTaskDelay(5000/portTICK_PERIOD_MS);
+
+    // read_task();
 }

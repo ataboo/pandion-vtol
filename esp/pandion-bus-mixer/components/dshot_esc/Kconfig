@@ -1,0 +1,11 @@
+menu "D-Shot ESC Control"
+    choice DSHOT_RATE
+        prompt "D-Shot Rate"
+        config DSHOT_RATE600
+            bool "600"
+        config DSHOT_RATE300
+            bool "300"
+        config DSHOT_RATE150
+            bool "150"
+    endchoice
+endmenu

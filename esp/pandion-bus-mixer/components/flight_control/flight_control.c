@@ -30,6 +30,9 @@ static ibus_channel_vals_t ibus_values;
 static transition_state_t transition_state;
 static servo_ctrl_handle_t servo_handle;
 static gyro_values_t gyro_values;
+static dshot_handle_t lw_dshot;
+static dshot_handle_t rw_dshot;
+static dshot_handle_t aft_dshot;
 
 static bool stabilization_armed;
 
@@ -90,16 +93,9 @@ static void update_roll() {
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(
-                servo_handle, 
-                RWPROP_CHAN, 
-                clampf(input_axes.throttle - MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1)
-            ));
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(
-                servo_handle, 
-                LWPROP_CHAN, 
-                clampf(input_axes.throttle + MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1)
-            ));
+            dshot_set_throttle(lw_dshot, clampf(input_axes.throttle - MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1));
+            dshot_set_throttle(rw_dshot, clampf(input_axes.throttle + MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1));
+
             break;
         case TRANS_HORIZONTAL:
             ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1-input_axes.roll));
@@ -113,11 +109,11 @@ static void update_pitch() {
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(
-                servo_handle, 
-                AFTPROP_CHAN, 
-                input_axes.pitch
-            ));
+            // ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(
+            //     servo_handle, 
+            //     AFTPROP_CHAN, 
+            //     input_axes.pitch
+            // ));
             break;
         case TRANS_HORIZONTAL:
             //TODO: if input past threshold, use aft fan?
@@ -137,8 +133,8 @@ static void update_yaw() {
             ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, input_axes.yaw));
             break;
         case TRANS_HORIZONTAL:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWPROP_CHAN, clampf(input_axes.throttle - MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1)));
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWPROP_CHAN, clampf(input_axes.throttle + MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1)));
+            dshot_set_throttle(lw_dshot, clampf(input_axes.throttle - MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
+            dshot_set_throttle(rw_dshot, clampf(input_axes.throttle + MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
             
             // TODO: rudder
             break;
@@ -172,9 +168,14 @@ static void update_input_axes() {
 }
 
 esp_err_t flight_control_init() {
+    esp_err_t ret = gyro_control_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to init gyro %02x", ret);
+        return ret; 
+    }
+
     transition_state = TRANS_VERTICAL;
     ibus_handle = ibus_duplex_init();
-    ESP_ERROR_CHECK(gyro_control_init());
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
         {
@@ -197,34 +198,24 @@ esp_err_t flight_control_init() {
             .max_us = 2000,
             .gpio_num = CONFIG_LWTRANS_GPIO
         },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RWPROP_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_LWPROP_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_AFTPROP_GPIO
-        },
+       
         {
             .min_us = 1000,
             .max_us = 2000,
             .gpio_num = CONFIG_ELEVATOR_GPIO
         },
-        // {
-        //     .min_us = 1000,
-        //     .max_us = 2000,
-        //     .gpio_num = CONFIG_RUDDER_GPIO
-        // }
+        {
+            .min_us = 1000,
+            .max_us = 2000,
+            .gpio_num = CONFIG_RUDDER_GPIO
+        }
     }; 
 
     servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
+
+    lw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_LWPROP_GPIO, .rmt_chan = 0, .name = "Left" });
+    rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
+    aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
     roll_pid_handle = pid_init("x_axis", CONFIG_PID_VERT_PX_GAIN, CONFIG_PID_VERT_IX_GAIN, CONFIG_PID_VERT_DX_GAIN);
     pitch_pid_handle = pid_init("y_axis", CONFIG_PID_VERT_PY_GAIN, CONFIG_PID_VERT_IY_GAIN, CONFIG_PID_VERT_DY_GAIN);
@@ -236,7 +227,6 @@ esp_err_t flight_control_init() {
 esp_err_t flight_control_update() {
     gyro_control_read(&gyro_values);
 
-    //TODO this crashes on fail!
     esp_err_t ret = ibus_duplex_update(ibus_handle);
     if (ret != ESP_OK) {
         return ret;
@@ -244,6 +234,7 @@ esp_err_t flight_control_update() {
 
     ret = ibus_get_channel_values(ibus_handle, &ibus_values);
     if (ret != ESP_OK) {
+        //TODO: fallback values?
         return ret;
     }
 

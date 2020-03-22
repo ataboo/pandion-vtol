@@ -269,15 +269,27 @@ esp_err_t gyro_control_init() {
     ESP_ERROR_CHECK(i2c_param_config(GYRO_I2C_NUM, &config));
     ESP_ERROR_CHECK(i2c_driver_install(GYRO_I2C_NUM, I2C_MODE_MASTER, 0, 0, 0));
 
-    ESP_ERROR_CHECK_WITHOUT_ABORT(reset_gyro());
+    esp_err_t ret = reset_gyro();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to reset gyro.");
+        return ret;
+    }
 
     vTaskDelay(50/portTICK_PERIOD_MS);
 
-    ESP_ERROR_CHECK_WITHOUT_ABORT(set_gyro_config_values());
+    ret = set_gyro_config_values();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set gyro config values.");
+        return ret;
+    }
 
     vTaskDelay(50/portTICK_PERIOD_MS);
 
-    ESP_ERROR_CHECK_WITHOUT_ABORT(callibrate_gyro());
+    ret = callibrate_gyro();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to calibrate gyro.");
+        return ret;
+    }
 
     return ESP_OK;
 }

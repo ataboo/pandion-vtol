@@ -10,8 +10,6 @@
 
 static const char* TAG = "PANDION_SERVO_CONTROL";
 
-const int servo_channel_gpio_numers[] = { CONFIG_RWTRANS_GPIO, CONFIG_LWTRANS_GPIO };
-
 typedef struct {
     ledc_channel_t ledc_channel;
     uint32_t min_duty;

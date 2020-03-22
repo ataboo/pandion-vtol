@@ -12,7 +12,7 @@ static const char* TAG = "PANDION_BUS_MIXER";
 
 static void read_task() {
     while(1) {
-        ESP_ERROR_CHECK(flight_control_update());
+        ESP_ERROR_CHECK_WITHOUT_ABORT(flight_control_update());
         vTaskDelay(10/portTICK_PERIOD_MS);
     }
 }
@@ -20,14 +20,20 @@ static void read_task() {
 void app_main()
 {
     esp_log_level_set("*", ESP_LOG_INFO);
+    // esp_log_level_set("*", ESP_LOG_DEBUG);
 
-    // flight_control_init();
 
-    dshot_handle_t dshot_handle = dshot_init((dshot_cfg){.rmt_chan = 1, .gpio_num = 23});
+    if(flight_control_init() != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to init flight control.");
+        vTaskDelay(10000/portTICK_PERIOD_MS);
+        abort();
+    }
 
-    dshot_set_throttle(dshot_handle, 1000);
+    // dshot_handle_t dshot_handle = dshot_init((dshot_cfg){.rmt_chan = 1, .gpio_num = 23, .name = "Left"});
 
-    vTaskDelay(5000/portTICK_PERIOD_MS);
+    // dshot_set_throttle(dshot_handle, 0.5);
 
-    // read_task();
+    // vTaskDelay(5000/portTICK_PERIOD_MS);
+
+    read_task();
 }

@@ -3,6 +3,7 @@
 #include <esp_types.h>
 #include "esp_err.h"
 #include <string.h>
+#include <esp_log.h>
 
 #define PID_NAME_MAX_LENGTH 16
 

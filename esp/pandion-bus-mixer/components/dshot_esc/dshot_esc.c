@@ -108,7 +108,7 @@ esp_err_t dshot_set_throttle(dshot_handle_t handle, float throttle) {
 
     ESP_LOGD(TAG, "%s | Throttle factor: %f", handle_impl->config.name, throttle);
 
-    handle_impl->throttle_value = throttle == 0 ? 0 : (uint16_t)(throttle * 1999 + 48);
+    handle_impl->throttle_value = (uint16_t)(throttle * 1999 + 48);
 
     ESP_LOGD(TAG, "%s | Throttle value: %d", handle_impl->config.name, handle_impl->throttle_value);
 

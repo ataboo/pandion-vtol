@@ -1,15 +1,15 @@
 #include "flight_control.h"
 
-#define MAX_ROLL_THRUST_DIFFERENTIAL 0.2
-#define MAX_YAW_THRUST_DIFFERENTIAL 0.2
+#define MAX_ROLL_THRUST_DIFFERENTIAL 0.15
+#define MAX_YAW_THRUST_DIFFERENTIAL 0.15
 #define AFT_PROP_FACTOR 0.2
 
 #define CONCAT_PID_CONFIG(TRANS, AXIS)  CONFIG_PID_ ## TRANS ## _ ## AXIS ## _GAIN/1000.0
 
  #define SET_PID_GAINS(TRANS) { \
-     pid_set_gains(pitch_pid_handle, CONCAT_PID_CONFIG(TRANS, PX), CONCAT_PID_CONFIG(TRANS, PX), CONCAT_PID_CONFIG(TRANS, PX)); \
-     pid_set_gains(pitch_pid_handle, CONCAT_PID_CONFIG(TRANS, PY), CONCAT_PID_CONFIG(TRANS, PY), CONCAT_PID_CONFIG(TRANS, PY)); \
-     pid_set_gains(pitch_pid_handle, CONCAT_PID_CONFIG(TRANS, PZ), CONCAT_PID_CONFIG(TRANS, PZ), CONCAT_PID_CONFIG(TRANS, PZ)); \
+     pid_set_gains(pitch_pid_handle, CONCAT_PID_CONFIG(TRANS, PX), CONCAT_PID_CONFIG(TRANS, IX), CONCAT_PID_CONFIG(TRANS, DX)); \
+     pid_set_gains(roll_pid_handle, CONCAT_PID_CONFIG(TRANS, PY), CONCAT_PID_CONFIG(TRANS, IY), CONCAT_PID_CONFIG(TRANS, DY)); \
+     pid_set_gains(yaw_pid_handle, CONCAT_PID_CONFIG(TRANS, PZ), CONCAT_PID_CONFIG(TRANS, IZ), CONCAT_PID_CONFIG(TRANS, DZ)); \
 }
 
 typedef struct {
@@ -57,9 +57,9 @@ static transition_state_t get_transition_state() {
     return  TRANS_HORIZONTAL;
 }
 
-static esp_err_t update_transition_state() {
+static esp_err_t update_transition_state(bool force) {
     transition_state_t new_trans_state = get_transition_state();
-    if (new_trans_state == transition_state) {
+    if (!force && new_trans_state == transition_state) {
         return ESP_OK;
     }
 
@@ -93,8 +93,8 @@ static void update_roll() {
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            dshot_set_throttle(lw_dshot, clampf(input_axes.throttle - MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1));
-            dshot_set_throttle(rw_dshot, clampf(input_axes.throttle + MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1));
+            dshot_set_throttle(lw_dshot, clampf(input_axes.throttle + MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1));
+            dshot_set_throttle(rw_dshot, clampf(input_axes.throttle - MAX_ROLL_THRUST_DIFFERENTIAL * roll_unit, 0, 1));
 
             break;
         case TRANS_HORIZONTAL:
@@ -133,8 +133,8 @@ static void update_yaw() {
             ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, input_axes.yaw));
             break;
         case TRANS_HORIZONTAL:
-            dshot_set_throttle(lw_dshot, clampf(input_axes.throttle - MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
-            dshot_set_throttle(rw_dshot, clampf(input_axes.throttle + MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
+            dshot_set_throttle(lw_dshot, clampf(input_axes.throttle + MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
+            dshot_set_throttle(rw_dshot, clampf(input_axes.throttle - MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
             
             // TODO: rudder
             break;
@@ -150,20 +150,23 @@ static void update_input_axes() {
     }
     stabilization_armed = armed;
 
-    if (stabilization_armed) {
-        pid_update(roll_pid_handle, CONFIG_MAX_ROLL_RATE/1000 * get_channel_duty(IBUS_CHAN_ROLL), gyro_values.norm_gyro_y);
-        pid_update(pitch_pid_handle, CONFIG_MAX_PITCH_RATE/1000 * get_channel_duty(IBUS_CHAN_PITCH), gyro_values.norm_gyro_x);
-        pid_update(yaw_pid_handle, CONFIG_MAX_YAW_RATE/1000 * get_channel_duty(IBUS_CHAN_RUDDER), gyro_values.norm_gyro_z);
+    input_axes.roll = get_channel_duty(IBUS_CHAN_ROLL);
+    input_axes.pitch = get_channel_duty(IBUS_CHAN_PITCH);
+    input_axes.yaw = get_channel_duty(IBUS_CHAN_RUDDER);
+    input_axes.throttle = get_channel_duty(IBUS_CHAN_THROTTLE);
 
-        input_axes.roll = clampf(roll_pid_handle->output / CONFIG_MAX_ROLL_RATE, -1, 1);
-        input_axes.pitch = clampf(pitch_pid_handle->output / CONFIG_MAX_PITCH_RATE, -1, 1);
-        input_axes.yaw = clampf(yaw_pid_handle->output / CONFIG_MAX_YAW_RATE, -1, 1);
-        input_axes.throttle = get_channel_duty(IBUS_CHAN_THROTTLE);
-    } else {
-        input_axes.roll = get_channel_duty(IBUS_CHAN_ROLL);
-        input_axes.pitch = get_channel_duty(IBUS_CHAN_PITCH);
-        input_axes.yaw = get_channel_duty(IBUS_CHAN_RUDDER);
-        input_axes.throttle = get_channel_duty(IBUS_CHAN_THROTTLE);
+    if (input_axes.throttle < 0.05) {
+        input_axes.throttle = 0.0;
+    }
+
+    if (stabilization_armed) {
+        pid_update(roll_pid_handle, CONFIG_MAX_ROLL_RATE/1000 * (input_axes.roll - 0.5) * 2, gyro_values.norm_gyro_y);
+        pid_update(pitch_pid_handle, CONFIG_MAX_PITCH_RATE/1000 * (input_axes.pitch- 0.5) * 2, gyro_values.norm_gyro_x);
+        pid_update(yaw_pid_handle, CONFIG_MAX_YAW_RATE/1000 * (input_axes.yaw - 0.5) * 2, -gyro_values.norm_gyro_z);
+
+        input_axes.roll = clampf(roll_pid_handle->output / 2 + 0.5, 0, 1);
+        input_axes.pitch = clampf(pitch_pid_handle->output / 2 + 0.5, 0, 1);
+        input_axes.yaw = clampf(yaw_pid_handle->output / 2 + 0.5, 0, 1);
     }
 }
 
@@ -221,6 +224,8 @@ esp_err_t flight_control_init() {
     pitch_pid_handle = pid_init("y_axis", CONFIG_PID_VERT_PY_GAIN, CONFIG_PID_VERT_IY_GAIN, CONFIG_PID_VERT_DY_GAIN);
     yaw_pid_handle = pid_init("z_axis", CONFIG_PID_VERT_PZ_GAIN, CONFIG_PID_VERT_IZ_GAIN, CONFIG_PID_VERT_DZ_GAIN);
 
+    update_transition_state(true);
+
     return ESP_OK;
 }
 
@@ -238,6 +243,20 @@ esp_err_t flight_control_update() {
         return ret;
     }
 
+    // ESP_LOGI("CONSOLE_PLOTTER", 
+    //     "[%f, %f, %f]", 
+    //     gyro_values.norm_gyro_x,
+    //     gyro_values.norm_gyro_y,
+    //     gyro_values.norm_gyro_z
+    // );
+
+    // ESP_LOGI("CONSOLE_PLOTTER", 
+    //     "[%f, %f, %f]", 
+    //     input_axes.yaw,
+    //     -100.0,
+    //     -100.0
+    // );
+
     // ESP_LOGI("CONSOLE_PLOT", 
     //     "[%d, %d, %d, %d, %d, %d]", 
     //     ibus_values.channels[0],
@@ -249,7 +268,7 @@ esp_err_t flight_control_update() {
     // );
 
     update_input_axes();
-    update_transition_state();
+    update_transition_state(false);
 
     update_roll();
     update_pitch();

@@ -102,10 +102,10 @@ menu "Pandion Flight Control"
             default 10
         config PID_VERT_IZ_GAIN
             int "PID Vertical Z Integral Gain"
-            default 0
+            default 2
         config PID_VERT_DZ_GAIN
             int "PID Vertical Z Derivative Gain"
-            default 0
+            default 2
             
         config MAX_ROLL_RATE
             int "Max roll rate (millideg/sec)"

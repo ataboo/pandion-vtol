@@ -1,0 +1,48 @@
+menu "Pandion Flight Control"
+    menu "GPIO Pins"
+        config RWTILT_GPIO
+            int "RW Tilt GPIO"
+            default 19
+            range 1 39
+
+        config RWTRANS_GPIO
+            int "RW Transition GPIO"
+            default 18
+            range 1 39
+
+        config RWPROP_GPIO
+            int "RW Propeller GPIO"
+            default 17
+            range 1 39
+
+        config LWTILT_GPIO
+            int "LW Tilt GPIO"
+            default 23
+            range 1 39
+
+        config LWTRANS_GPIO
+            int "LW Transition GPIO"
+            default 25
+            range 1 39
+
+        config LWPROP_GPIO
+            int "LW Propeller GPIO"
+            default 26
+            range 1 39
+
+        config AFTPROP_GPIO
+            int "Aft Propeller GPIO"
+            default 27
+            range 1 39
+
+        config ELEVATOR_GPIO
+            int "Elevator GPIO"
+            default 32
+            range 1 39
+
+        config RUDDER_GPIO
+            int "Rudder GPIO"
+            default 33
+            range 1 39
+    endmenu
+endmenu

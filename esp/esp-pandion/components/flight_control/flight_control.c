@@ -3,14 +3,11 @@
 #define MAX_ROLL_THRUST_DIFFERENTIAL 0.15
 #define MAX_YAW_THRUST_DIFFERENTIAL 0.15
 #define AFT_PROP_FACTOR 0.2
+#define TRANS_DUTY_STEP 0.05
 
-#define CONCAT_PID_CONFIG(TRANS, AXIS)  CONFIG_PID_ ## TRANS ## _ ## AXIS ## _GAIN/1000.0
-
- #define SET_PID_GAINS(TRANS) { \
-     pid_set_gains(pitch_pid_handle, CONCAT_PID_CONFIG(TRANS, PX), CONCAT_PID_CONFIG(TRANS, IX), CONCAT_PID_CONFIG(TRANS, DX)); \
-     pid_set_gains(roll_pid_handle, CONCAT_PID_CONFIG(TRANS, PY), CONCAT_PID_CONFIG(TRANS, IY), CONCAT_PID_CONFIG(TRANS, DY)); \
-     pid_set_gains(yaw_pid_handle, CONCAT_PID_CONFIG(TRANS, PZ), CONCAT_PID_CONFIG(TRANS, IZ), CONCAT_PID_CONFIG(TRANS, DZ)); \
-}
+#define MAX_ROLL_RATE 45.0
+#define MAX_PITCH_RATE 45.0
+#define MAX_YAW_RATE 45.0
 
 typedef struct {
     float roll;
@@ -19,11 +16,20 @@ typedef struct {
     float throttle;
 } axis_duties;
 
+typedef struct {
+    pid_constants_t vertical;
+    pid_constants_t horizontal;
+} axis_pid_constants_t;
+
 static const char* TAG = "FLIGHT_CONTROL";
 
 static pid_handle_t roll_pid_handle;
 static pid_handle_t pitch_pid_handle;
 static pid_handle_t yaw_pid_handle;
+
+static axis_pid_constants_t roll_pid_k;
+static axis_pid_constants_t pitch_pid_k;
+static axis_pid_constants_t yaw_pid_k;
 
 static ibus_duplex_handle_t ibus_handle;
 static ibus_channel_vals_t ibus_values;
@@ -33,6 +39,9 @@ static gyro_values_t gyro_values;
 static dshot_handle_t lw_dshot;
 static dshot_handle_t rw_dshot;
 static dshot_handle_t aft_dshot;
+
+static float target_trans_duty;
+static float current_trans_duty;
 
 static bool stabilization_armed;
 
@@ -63,28 +72,47 @@ static esp_err_t update_transition_state(bool force) {
         return ESP_OK;
     }
 
-    ESP_LOGI(TAG, "New transition: %d", new_trans_state);
-    transition_state = new_trans_state;
-    
-    float trans_duty;
-    switch(transition_state) {
-        case TRANS_HORIZONTAL:
-            SET_PID_GAINS(HORIZ);
-            trans_duty = 0.0;
-            break;
-        case TRANS_MID:
-            SET_PID_GAINS(VERT);
-            trans_duty = 0.8;
-            break;
-        default:
-        case TRANS_VERTICAL:
-            SET_PID_GAINS(VERT);
-            trans_duty = 1.0;
-            break;
+    if (force || new_trans_state != transition_state) {
+        ESP_LOGI(TAG, "New transition: %d", new_trans_state);
+        transition_state = new_trans_state;
+        
+        switch(transition_state) {
+            case TRANS_HORIZONTAL:
+                pid_set_gains(roll_pid_handle, &roll_pid_k.horizontal);
+                pid_set_gains(pitch_pid_handle, &pitch_pid_k.horizontal);
+                pid_set_gains(yaw_pid_handle, &yaw_pid_k.horizontal);
+                target_trans_duty = 0.0;
+                break;
+            case TRANS_MID:
+                pid_set_gains(roll_pid_handle, &roll_pid_k.vertical);
+                pid_set_gains(pitch_pid_handle, &pitch_pid_k.vertical);
+                pid_set_gains(yaw_pid_handle, &yaw_pid_k.vertical);
+                target_trans_duty = 0.8;
+                break;
+            default:
+            case TRANS_VERTICAL:
+                pid_set_gains(roll_pid_handle, &roll_pid_k.vertical);
+                pid_set_gains(pitch_pid_handle, &pitch_pid_k.vertical);
+                pid_set_gains(yaw_pid_handle, &yaw_pid_k.vertical);
+                target_trans_duty = 1.0;
+                break;
+        }
     }
 
-    return servo_ctrl_set_channel_duty(servo_handle, LWTRANS_CHAN, 1-trans_duty) | 
-        servo_ctrl_set_channel_duty(servo_handle, RWTRANS_CHAN, trans_duty);
+    if (!force && current_trans_duty == target_trans_duty) {
+        return ESP_OK;
+    }
+
+    if (target_trans_duty > current_trans_duty) {
+        current_trans_duty += TRANS_DUTY_STEP;
+    } else {
+        current_trans_duty -= TRANS_DUTY_STEP;
+    }
+
+    current_trans_duty = clampf(current_trans_duty, 0, 1);
+
+    return servo_ctrl_set_channel_duty(servo_handle, LWTRANS_CHAN, 1-current_trans_duty) | 
+        servo_ctrl_set_channel_duty(servo_handle, RWTRANS_CHAN, current_trans_duty);
 }
 
 static void update_roll() {
@@ -109,11 +137,7 @@ static void update_pitch() {
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            // ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(
-            //     servo_handle, 
-            //     AFTPROP_CHAN, 
-            //     input_axes.pitch
-            // ));
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, AFTPROP_CHAN, input_axes.pitch));
             break;
         case TRANS_HORIZONTAL:
             //TODO: if input past threshold, use aft fan?
@@ -136,7 +160,7 @@ static void update_yaw() {
             dshot_set_throttle(lw_dshot, clampf(input_axes.throttle + MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
             dshot_set_throttle(rw_dshot, clampf(input_axes.throttle - MAX_YAW_THRUST_DIFFERENTIAL * yaw_unit, 0, 1));
             
-            // TODO: rudder
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RUDDER_CHAN, input_axes.yaw));
             break;
     }
 }
@@ -160,9 +184,9 @@ static void update_input_axes() {
     }
 
     if (stabilization_armed) {
-        pid_update(roll_pid_handle, CONFIG_MAX_ROLL_RATE/1000 * (input_axes.roll - 0.5) * 2, gyro_values.norm_gyro_y);
-        pid_update(pitch_pid_handle, CONFIG_MAX_PITCH_RATE/1000 * (input_axes.pitch- 0.5) * 2, gyro_values.norm_gyro_x);
-        pid_update(yaw_pid_handle, CONFIG_MAX_YAW_RATE/1000 * (input_axes.yaw - 0.5) * 2, -gyro_values.norm_gyro_z);
+        pid_update(roll_pid_handle, MAX_ROLL_RATE/1000 * (input_axes.roll - 0.5) * 2, gyro_values.norm_gyro_x);
+        pid_update(pitch_pid_handle, MAX_PITCH_RATE/1000 * (input_axes.pitch - 0.5) * 2, gyro_values.norm_gyro_y);
+        pid_update(yaw_pid_handle, MAX_YAW_RATE/1000 * (input_axes.yaw - 0.5) * 2, -gyro_values.norm_gyro_z);
 
         input_axes.roll = clampf(roll_pid_handle->output / 2 + 0.5, 0, 1);
         input_axes.pitch = clampf(pitch_pid_handle->output / 2 + 0.5, 0, 1);
@@ -181,38 +205,13 @@ esp_err_t flight_control_init() {
     ibus_handle = ibus_duplex_init();
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RWTILT_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_LWTILT_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RWTRANS_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_LWTRANS_GPIO
-        },
-       
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_ELEVATOR_GPIO
-        },
-        {
-            .min_us = 1000,
-            .max_us = 2000,
-            .gpio_num = CONFIG_RUDDER_GPIO
-        }
-    }; 
+        { 1000, 2000, CONFIG_RWTILT_GPIO },
+        { 1000, 2000, CONFIG_LWTILT_GPIO },
+        { 1000, 2000, CONFIG_RWTRANS_GPIO },
+        { 1000, 2000, CONFIG_LWTRANS_GPIO },
+        { 1000, 2000, CONFIG_ELEVATOR_GPIO },
+        { 1000, 2000, CONFIG_RUDDER_GPIO }
+    };
 
     servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
 
@@ -220,9 +219,24 @@ esp_err_t flight_control_init() {
     rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
-    roll_pid_handle = pid_init("x_axis", CONFIG_PID_VERT_PX_GAIN, CONFIG_PID_VERT_IX_GAIN, CONFIG_PID_VERT_DX_GAIN);
-    pitch_pid_handle = pid_init("y_axis", CONFIG_PID_VERT_PY_GAIN, CONFIG_PID_VERT_IY_GAIN, CONFIG_PID_VERT_DY_GAIN);
-    yaw_pid_handle = pid_init("z_axis", CONFIG_PID_VERT_PZ_GAIN, CONFIG_PID_VERT_IZ_GAIN, CONFIG_PID_VERT_DZ_GAIN);
+    roll_pid_k = (axis_pid_constants_t){
+        .vertical = {0.5, 0.5, 0.1},
+        .horizontal = {0.5, 0.5, 0.1}
+    };
+
+    pitch_pid_k = (axis_pid_constants_t){
+        .vertical = {0.5, 0.5, 0.1},
+        .horizontal = {0.5, 0.5, 0.1}
+    };
+
+    yaw_pid_k = (axis_pid_constants_t){
+        .vertical = {0.5, 0.5, 0.1},
+        .horizontal = {0.5, 0.5, 0.1}
+    };
+
+    roll_pid_handle = pid_init("x_axis", &roll_pid_k.vertical);
+    pitch_pid_handle = pid_init("y_axis", &pitch_pid_k.vertical);
+    yaw_pid_handle = pid_init("z_axis", &yaw_pid_k.vertical);
 
     update_transition_state(true);
 

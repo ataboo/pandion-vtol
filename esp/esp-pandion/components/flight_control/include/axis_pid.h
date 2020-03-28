@@ -11,12 +11,18 @@ typedef struct pid_handle_impl {
     float output;
 } *pid_handle_t;
 
-pid_handle_t pid_init(const char* name, float instant_gain, float integral_gain, float derivative_gain);
+typedef struct {
+    float k_p;
+    float k_i;
+    float k_d;
+} pid_constants_t;
+
+pid_handle_t pid_init(const char* name, pid_constants_t* pid_constants);
 
 esp_err_t pid_update(pid_handle_t handle, float target, float current);
 
 esp_err_t pid_reset(pid_handle_t handle);
 
-esp_err_t pid_set_gains(pid_handle_t handle, float instant_gain, float integral_gain, float derivative_gain);
+esp_err_t pid_set_gains(pid_handle_t handle, pid_constants_t* pid_constants);
 
 esp_err_t pid_terminate(pid_handle_t handle);

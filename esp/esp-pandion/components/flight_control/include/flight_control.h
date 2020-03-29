@@ -6,6 +6,7 @@
 #include "servo_control.h"
 #include "dshot_esc.h"
 #include "math.h"
+#include "axis_curve.h"
 
 typedef enum {
     RWTILT_CHAN = 0,

@@ -24,6 +24,7 @@ typedef struct {
     uint16_t output_value;
     uint16_t checksum_value;
     uint16_t throttle_value;
+    bool started;
 } dshot_handle_impl;
 
 static uint8_t dshot_checksum(uint16_t output) {
@@ -49,9 +50,12 @@ dshot_handle_t dshot_init(dshot_cfg cfg) {
 
     rmt_config_t rmt_cfg = RMT_DEFAULT_CONFIG_TX(cfg.gpio_num, cfg.rmt_chan);
     rmt_cfg.tx_config.idle_output_en = 1;
+    rmt_cfg.tx_config.loop_en = true;
     rmt_cfg.clk_div = DSHOT_CLOCK_DIV;
+
     handle->config = cfg;
     handle->rmt_config = rmt_cfg;
+    handle->started = false;
 
     for(int i=0; i<16; i++) {
         rmt_buffer[i] = (rmt_item32_t) {
@@ -63,9 +67,9 @@ dshot_handle_t dshot_init(dshot_cfg cfg) {
     }
 
     rmt_buffer[16] = (rmt_item32_t) {
-        .duration0 = DSHOT_SPACING_TICKS,
+        .duration0 = DSHOT_SPACING_TICKS/2,
         .level0 = 0,
-        .duration1 = 0,
+        .duration1 = DSHOT_SPACING_TICKS/2,
         .level1 = 0
     };
 
@@ -80,6 +84,8 @@ dshot_handle_t dshot_init(dshot_cfg cfg) {
 esp_err_t dshot_set_output(dshot_handle_t handle, uint16_t output) {
     dshot_handle_impl* handle_impl = (dshot_handle_impl*)handle;
 
+    handle_impl->output_value = output;
+
     handle_impl->checksum_value = dshot_checksum(handle_impl->output_value);
 
     ESP_LOGD(TAG, "%s | Checksum: %d", handle_impl->config.name, handle_impl->checksum_value);
@@ -91,9 +97,14 @@ esp_err_t dshot_set_output(dshot_handle_t handle, uint16_t output) {
 
     set_rmt_value_buffer(handle_impl->output_value);
 
-    ESP_ERROR_CHECK(rmt_write_items(handle_impl->rmt_config.channel, (rmt_item32_t*)rmt_buffer, RMT_BUFFER_LEN, true));
-    rmt_set_tx_intr_en(handle_impl->rmt_config.channel, false);
-    rmt_set_tx_loop_mode(handle_impl->rmt_config.channel, true);
+    if (!handle_impl->started) {
+        ESP_ERROR_CHECK(rmt_write_items(handle_impl->rmt_config.channel, (rmt_item32_t*)rmt_buffer, RMT_BUFFER_LEN, true));
+        rmt_set_tx_intr_en(handle_impl->rmt_config.channel, false);
+        rmt_set_tx_loop_mode(handle_impl->rmt_config.channel, true); 
+        handle_impl->started = true;
+    } else {
+        ESP_ERROR_CHECK(rmt_fill_tx_items(handle_impl->rmt_config.channel, (rmt_item32_t*)rmt_buffer, RMT_BUFFER_LEN, 0));
+    }
 
     return ESP_OK;
 }
@@ -108,7 +119,11 @@ esp_err_t dshot_set_throttle(dshot_handle_t handle, float throttle) {
 
     ESP_LOGD(TAG, "%s | Throttle factor: %f", handle_impl->config.name, throttle);
 
-    handle_impl->throttle_value = (uint16_t)(throttle * 1999 + 48);
+    if (throttle > 0) {
+        handle_impl->throttle_value = (uint16_t)(throttle * 1999 + 48);
+    } else {
+        handle_impl->throttle_value = 0.0;
+    }
 
     ESP_LOGD(TAG, "%s | Throttle value: %d", handle_impl->config.name, handle_impl->throttle_value);
 

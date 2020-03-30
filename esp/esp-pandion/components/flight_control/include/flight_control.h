@@ -8,6 +8,8 @@
 #include "math.h"
 #include "axis_curve.h"
 
+// #define PANDION_GYRO_ENABLED
+
 typedef enum {
     RWTILT_CHAN = 0,
     LWTILT_CHAN,

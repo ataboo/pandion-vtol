@@ -22,7 +22,7 @@ menu "Pandion Flight Control"
 
         config LWTRANS_GPIO
             int "LW Transition GPIO"
-            default 25
+            default 27
             range 1 39
 
         config LWPROP_GPIO
@@ -32,17 +32,17 @@ menu "Pandion Flight Control"
 
         config AFTPROP_GPIO
             int "Aft Propeller GPIO"
-            default 27
+            default 25
             range 1 39
 
         config ELEVATOR_GPIO
             int "Elevator GPIO"
-            default 32
+            default 12
             range 1 39
 
         config RUDDER_GPIO
             int "Rudder GPIO"
-            default 33
+            default 14
             range 1 39
     endmenu
 endmenu

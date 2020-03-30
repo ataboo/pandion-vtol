@@ -9,6 +9,8 @@
 #define MAX_PITCH_RATE 45.0
 #define MAX_YAW_RATE 60.0
 
+#define AFT_PROP_DEADZONE 0.05
+
 typedef struct {
     float roll;
     float pitch;
@@ -39,7 +41,6 @@ static ibus_duplex_handle_t ibus_handle;
 static ibus_channel_vals_t ibus_values;
 static transition_state_t transition_state;
 static servo_ctrl_handle_t servo_handle;
-static gyro_values_t gyro_values;
 static dshot_handle_t lw_dshot;
 static dshot_handle_t rw_dshot;
 static dshot_handle_t aft_dshot;
@@ -47,7 +48,10 @@ static dshot_handle_t aft_dshot;
 static float target_trans_duty;
 static float current_trans_duty;
 
+#ifdef PANDION_GYRO_ENABLED
+static gyro_values_t gyro_values;
 static bool stabilization_armed;
+#endif
 
 static axis_duties input_axes;
 
@@ -135,17 +139,28 @@ static void update_roll() {
 }
 
 static void update_pitch() {
-    float pitch_unit = (input_axes.pitch + 1) / 2;
+    float pitch_unit;
+
+    if (input_axes.pitch < -AFT_PROP_DEADZONE) {
+        pitch_unit = -(input_axes.pitch + AFT_PROP_DEADZONE) / (1-AFT_PROP_DEADZONE) * 0.5;
+    } else if (input_axes.pitch > AFT_PROP_DEADZONE) {
+        pitch_unit = 0.5 + (input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE) * 0.5;
+    } else {
+        pitch_unit = 0;
+    }
+
+    ESP_LOGI(TAG, "Pitch unit: %f", pitch_unit);
 
     switch (transition_state)
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            // ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, AFTPROP_CHAN, input_axes.pitch));
+            // dshot_set_throttle(aft_dshot, clampf(input_axes.pitch, 0, 1));
+            dshot_set_throttle(aft_dshot, pitch_unit);
             break;
         case TRANS_HORIZONTAL:
             //TODO: if input past threshold, use aft fan?
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, ELEVATOR_CHAN, pitch_unit));
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, ELEVATOR_CHAN, input_axes.pitch));
             break;
     }
 }
@@ -171,14 +186,6 @@ static void update_yaw() {
 }
 
 static void update_input_axes() {
-    bool armed = get_channel_duty(IBUS_CHAN_ARM) > 0.5;
-    if (!stabilization_armed && armed) {
-        pid_reset(roll_pid_handle);
-        pid_reset(pitch_pid_handle);
-        pid_reset(yaw_pid_handle);
-    }
-    stabilization_armed = armed;
-
     input_axes.roll = get_channel_duty(IBUS_CHAN_ROLL);
     input_axes.pitch = get_channel_duty(IBUS_CHAN_PITCH);
     input_axes.yaw = get_channel_duty(IBUS_CHAN_RUDDER);
@@ -189,6 +196,14 @@ static void update_input_axes() {
         input_axes.throttle = -1.0;
     }
 
+#ifdef PANDION_GYRO_ENABLED
+    bool armed = get_channel_duty(IBUS_CHAN_ARM) > 0.5;
+    if (!stabilization_armed && armed) {
+        pid_reset(roll_pid_handle);
+        pid_reset(pitch_pid_handle);
+        pid_reset(yaw_pid_handle);
+    }
+    stabilization_armed = armed;
     if (stabilization_armed) {
         pid_update(roll_pid_handle, MAX_ROLL_RATE * input_axes.roll, gyro_values.norm_gyro_x);
         pid_update(pitch_pid_handle, MAX_PITCH_RATE * input_axes.pitch, gyro_values.norm_gyro_y);
@@ -198,20 +213,24 @@ static void update_input_axes() {
         input_axes.pitch = clampf(pitch_pid_handle->output, -1, 1);
         input_axes.yaw = clampf(yaw_pid_handle->output, -1, 1);
     }
+#endif
 
     input_axes.roll = axis_curve_calculate(roll_curve_handle, input_axes.roll);
     input_axes.pitch = axis_curve_calculate(pitch_curve_handle, input_axes.pitch);
     input_axes.yaw = axis_curve_calculate(yaw_curve_handle, input_axes.yaw);
 
-    // ESP_LOGI(TAG, "Roll %f, pitch %f, yaw %f", input_axes.roll, input_axes.pitch, input_axes.yaw);
+    ESP_LOGD(TAG, "Roll %f, Pitch %f, Yaw %f", input_axes.roll, input_axes.pitch, input_axes.yaw);
 }
 
 esp_err_t flight_control_init() {
+    
+#ifdef PANDION_GYRO_ENABLED
     esp_err_t ret = gyro_control_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init gyro %02x", ret);
         return ret; 
     }
+#endif
 
     transition_state = TRANS_VERTICAL;
     ibus_handle = ibus_duplex_init();
@@ -219,8 +238,8 @@ esp_err_t flight_control_init() {
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
         { 1050, 2050, CONFIG_RWTILT_GPIO },
         { 1050, 2050, CONFIG_LWTILT_GPIO },
-        { 1000, 2030, CONFIG_RWTRANS_GPIO },
-        { 1000, 2030, CONFIG_LWTRANS_GPIO },
+        { 985, 2015, CONFIG_RWTRANS_GPIO },
+        { 985, 2015, CONFIG_LWTRANS_GPIO },
         { 1000, 2000, CONFIG_ELEVATOR_GPIO },
         { 1000, 2000, CONFIG_RUDDER_GPIO }
     };
@@ -232,13 +251,13 @@ esp_err_t flight_control_init() {
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
     roll_pid_k = (axis_pid_constants_t){
-        .vertical = {0.02, 0.001, 0.01},
+            .vertical = {0.02, 0.001, 0.01},
         .horizontal = {0.015, 0.001, 0.00}
     };
 
     pitch_pid_k = (axis_pid_constants_t){
-        .vertical = {0.0, 0.0, 0.0},
-        .horizontal = {0.0, 0.0, 0.0}
+        .vertical = {0.02, 0.001, 0.01},
+        .horizontal = {0.02, 0.001, 0.01}
     };
 
     yaw_pid_k = (axis_pid_constants_t){
@@ -260,7 +279,9 @@ esp_err_t flight_control_init() {
 }
 
 esp_err_t flight_control_update() {
+#ifdef PANDION_GYRO_ENABLED
     gyro_control_read(&gyro_values);
+#endif
 
     esp_err_t ret = ibus_duplex_update(ibus_handle);
     if (ret != ESP_OK) {

@@ -23,18 +23,18 @@
 // 133 / 80Mhz = 1663ns
 #define DSHOT_BIT_TICKS 134
 
-// 100 / 80Mhz = 1250ns 
-#define DSHOT_1H_TICKS 100
-// 33 / 80Mhz =  413ns
+// 93 / 80Mhz = 1167ns 
+#define DSHOT_1H_TICKS 94
+// 40 / 80Mhz =  500ns
 #define DSHOT_1L_TICKS DSHOT_BIT_TICKS-DSHOT_1H_TICKS
 
-// 50 / 80Mhz = 625ns
-#define DSHOT_0H_TICKS 50
-// 83 / 80Mhz = 1038ns
+// 47 / 80Mhz = 583ns
+#define DSHOT_0H_TICKS 48
+// 87 / 80Mhz = 1083ns
 #define DSHOT_0L_TICKS DSHOT_BIT_TICKS-DSHOT_0H_TICKS
 
-// #define DSHOT_SPACING_TICKS DSHOT_BIT_TICKS * 156
-#define DSHOT_SPACING_TICKS 40000 - 134*16     
+// 38000 / 80Mhz = 475us
+#define DSHOT_SPACING_TICKS 38000
 
 typedef struct {
     gpio_num_t gpio_num;

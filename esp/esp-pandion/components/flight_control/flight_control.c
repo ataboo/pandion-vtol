@@ -149,13 +149,10 @@ static void update_pitch() {
         pitch_unit = 0;
     }
 
-    ESP_LOGI(TAG, "Pitch unit: %f", pitch_unit);
-
     switch (transition_state)
     {
         case TRANS_VERTICAL:
         case TRANS_MID:
-            // dshot_set_throttle(aft_dshot, clampf(input_axes.pitch, 0, 1));
             dshot_set_throttle(aft_dshot, pitch_unit);
             break;
         case TRANS_HORIZONTAL:

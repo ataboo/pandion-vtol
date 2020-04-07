@@ -84,7 +84,7 @@ dshot_handle_t dshot_init(dshot_cfg cfg) {
 esp_err_t dshot_set_output(dshot_handle_t handle, uint16_t output) {
     dshot_handle_impl* handle_impl = (dshot_handle_impl*)handle;
 
-    handle_impl->output_value = output;
+    handle_impl->output_value = output & 0xfff0;
 
     handle_impl->checksum_value = dshot_checksum(handle_impl->output_value);
 

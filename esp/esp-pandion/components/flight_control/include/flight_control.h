@@ -8,7 +8,7 @@
 #include "math.h"
 #include "axis_curve.h"
 
-// #define PANDION_GYRO_ENABLED
+#define PANDION_GYRO_ENABLED
 
 typedef enum {
     RWTILT_CHAN = 0,
@@ -23,7 +23,8 @@ typedef enum {
 typedef enum {
     TRANS_VERTICAL,
     TRANS_MID,
-    TRANS_HORIZONTAL
+    TRANS_HORIZONTAL,
+    TRANS_UNSET
 } transition_state_t;
 
 esp_err_t flight_control_init();

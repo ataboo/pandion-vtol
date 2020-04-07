@@ -65,9 +65,9 @@ static float get_channel_duty(uint8_t channel_idx) {
 
 static transition_state_t get_transition_state() {
     float trans_channel_val = get_channel_duty(IBUS_CHAN_TRANSITION);
-    if (trans_channel_val < 0.3) {
+    if (trans_channel_val < -0.3) {
         return TRANS_VERTICAL;
-    } else if (trans_channel_val < 0.6) {
+    } else if (trans_channel_val < 0.3) {
         return TRANS_MID;
     }
 
@@ -82,6 +82,8 @@ static esp_err_t update_transition_state(bool force) {
         transition_state = new_trans_state;
         
         switch(transition_state) {
+            case TRANS_UNSET:
+                ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
             case TRANS_HORIZONTAL:
                 pid_set_gains(roll_pid_handle, &roll_pid_k.horizontal);
                 pid_set_gains(pitch_pid_handle, &pitch_pid_k.horizontal);
@@ -104,10 +106,6 @@ static esp_err_t update_transition_state(bool force) {
         }
     }
 
-    if (!force && current_trans_duty == target_trans_duty) {
-        return ESP_OK;
-    }
-
     if (target_trans_duty > current_trans_duty) {
         current_trans_duty += TRANS_DUTY_STEP;
     } else {
@@ -125,6 +123,8 @@ static void update_roll() {
     float throttle_unit = (input_axes.throttle + 1) / 2;
     switch (transition_state)
     {
+        case TRANS_UNSET:
+            ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
         case TRANS_VERTICAL:
         case TRANS_MID:
             dshot_set_throttle(lw_dshot, clampf(throttle_unit + MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1));
@@ -151,6 +151,7 @@ static void update_pitch() {
 
     switch (transition_state)
     {
+        case TRANS_UNSET:
         case TRANS_VERTICAL:
         case TRANS_MID:
             dshot_set_throttle(aft_dshot, pitch_unit);
@@ -168,6 +169,8 @@ static void update_yaw() {
 
     switch (transition_state)
     {
+        case TRANS_UNSET:
+            ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
         case TRANS_VERTICAL:
         case TRANS_MID:
             ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, yaw_unit));
@@ -229,7 +232,9 @@ esp_err_t flight_control_init() {
     }
 #endif
 
-    transition_state = TRANS_VERTICAL;
+    transition_state = TRANS_UNSET;
+    current_trans_duty = 1.0;
+    target_trans_duty = 1.0;
     ibus_handle = ibus_duplex_init();
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
@@ -248,7 +253,7 @@ esp_err_t flight_control_init() {
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
     roll_pid_k = (axis_pid_constants_t){
-            .vertical = {0.02, 0.001, 0.01},
+            .vertical = {0.01, 0.001, 0.005},
         .horizontal = {0.015, 0.001, 0.00}
     };
 
@@ -258,8 +263,8 @@ esp_err_t flight_control_init() {
     };
 
     yaw_pid_k = (axis_pid_constants_t){
-        .vertical = {0.02, 0.001, 0.01},
-        .horizontal = {0.02, 0.001, 0.01}
+        .vertical = {0.01, 0.001, 0.005},
+        .horizontal = {0.01, 0.001, 0.005}
     };
 
     roll_curve_handle = axis_curve_init(0.5);
@@ -269,8 +274,6 @@ esp_err_t flight_control_init() {
     roll_pid_handle = pid_init("x_axis", &roll_pid_k.vertical);
     pitch_pid_handle = pid_init("y_axis", &pitch_pid_k.vertical);
     yaw_pid_handle = pid_init("z_axis", &yaw_pid_k.vertical);
-
-    update_transition_state(true);
 
     return ESP_OK;
 }

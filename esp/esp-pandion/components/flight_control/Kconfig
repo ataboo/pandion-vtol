@@ -44,5 +44,10 @@ menu "Pandion Flight Control"
             int "Rudder GPIO"
             default 14
             range 1 39
+
+        config BATTERY_VCC_GPIO
+            int "Rudder GPIO"
+            default 36
+            range 1 39
     endmenu
 endmenu

@@ -232,6 +232,8 @@ esp_err_t flight_control_init() {
     }
 #endif
 
+    ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
+
     transition_state = TRANS_UNSET;
     current_trans_duty = 1.0;
     target_trans_duty = 1.0;
@@ -294,29 +296,7 @@ esp_err_t flight_control_update() {
         return ret;
     }
 
-    // ESP_LOGI("CONSOLE_PLOTTER", 
-    //     "[%f, %f, %f]", 
-    //     gyro_values.norm_gyro_x,
-    //     gyro_values.norm_gyro_y,
-    //     gyro_values.norm_gyro_z
-    // );
-
-    // ESP_LOGI("CONSOLE_PLOTTER", 
-    //     "[%f, %f, %f]", 
-    //     input_axes.yaw,
-    //     -100.0,
-    //     -100.0
-    // );
-
-    // ESP_LOGI("CONSOLE_PLOT", 
-    //     "[%d, %d, %d, %d, %d, %d]", 
-    //     ibus_values.channels[0],
-    //     ibus_values.channels[1],
-    //     ibus_values.channels[2],
-    //     ibus_values.channels[3],
-    //     ibus_values.channels[4],    
-    //     ibus_values.channels[5],
-    // );
+    battery_meter_update();
 
     update_input_axes();
     update_transition_state(false);

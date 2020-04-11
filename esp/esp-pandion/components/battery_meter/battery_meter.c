@@ -1,41 +1,52 @@
 #include "battery_meter.h"                                  
 
-static uint16_t level;
+static esp_adc_cal_characteristics_t* adc_chars;
+static uint64_t mean_sum;
+static uint32_t mean_mv;
+static uint32_t current_mv;
 
-static void read_gpio_level(uint16_t* level) {
-    *level = (uint16_t)gpio_get_level(CONFIG_BATTERY_VCC_GPIO);
+static const char* TAG = "BATTERY_METER";
+
+static void read_voltage_level() {
+    esp_adc_cal_get_voltage(ADC_CHANNEL_0, adc_chars, &current_mv);
 }
 
 esp_err_t battery_meter_init() {
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_PIN_INTR_DISABLE,
-        .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = CONFIG_BATTERY_VCC_GPIO,
-        .pull_down_en = 0,
-        .pull_up_en = 0
-    };
+    adc_chars = (esp_adc_cal_characteristics_t*)malloc(sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_12Bit, BATTERY_LEVEL_VREF_MV, adc_chars);
 
-    return gpio_config(&io_conf);
+    esp_err_t ret = adc1_config_width(ADC_WIDTH_12Bit);
+    ret |= adc1_config_channel_atten(ADC_CHANNEL_0, ADC_ATTEN_DB_11);
+
+    battery_meter_update();
+    mean_mv = current_mv;
+
+    return ret;
 }
 
-float battery_meter_voltage() {
-    read_gpio_level(&level);
+void battery_meter_update() {
+    read_voltage_level();
 
-    return level / 4095.0 * 3.3 / BATTERY_GPIO_VOLTAGE_FACTOR;
+    mean_sum = mean_mv * (BATTERY_LEVEL_MEAN_SAMPLE_COUNT - 1) + current_mv;
+    mean_mv = mean_sum / BATTERY_LEVEL_MEAN_SAMPLE_COUNT;
+
+    ESP_LOGD(TAG, "Battery: %d, %d, %d, %d", current_mv, mean_mv, battery_meter_mv(), battery_meter_state());
+}
+
+uint32_t battery_meter_mv() {
+    return mean_mv / BATTERY_GPIO_VOLTAGE_FACTOR;
 }
 
 battery_state_t battery_meter_state() {
-    read_gpio_level(&level);
-    
-    if(level < BATTERY_LEVEL_EMPTY) {
+    if(mean_mv < BATTERY_LEVEL_EMPTY_MV) {
         return BATTERY_EMPTY;
     }
 
-    if (level < BATTERY_LEVEL_ALARM) {
+    if (mean_mv < BATTERY_LEVEL_ALARM_MV) {
         return BATTERY_ALARM;
     }
 
-    if (level < BATTERY_LEVEL_FULL) {
+    if (mean_mv < BATTERY_LEVEL_FULL_MV) {
         return BATTERY_NOMINAL;
     }
 

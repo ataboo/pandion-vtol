@@ -1,3 +1,3 @@
-idf_component_register(SRCS "ibus_duplex.c"
+idf_component_register(SRCS "ibus_uart.c"
                        INCLUDE_DIRS "include"
                        PRIV_REQUIRES )

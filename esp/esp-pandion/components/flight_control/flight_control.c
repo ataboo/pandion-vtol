@@ -37,8 +37,8 @@ static axis_pid_constants_t roll_pid_k;
 static axis_pid_constants_t pitch_pid_k;
 static axis_pid_constants_t yaw_pid_k;
 
-static ibus_duplex_handle_t ibus_handle;
-static ibus_channel_vals_t ibus_values;
+static ibus_rx_handle_t ibus_handle;
+static ibus_rx_channel_vals_t ibus_values;
 static transition_state_t transition_state;
 static servo_ctrl_handle_t servo_handle;
 static dshot_handle_t lw_dshot;
@@ -186,7 +186,7 @@ static void update_yaw() {
 }
 
 static void update_input_axes() {
-    input_axes.roll = get_channel_duty(IBUS_CHAN_ROLL);
+    input_axes.roll = get_channel_duty(IBUS_RX_CHAN_ROLL);
     input_axes.pitch = get_channel_duty(IBUS_CHAN_PITCH);
     input_axes.yaw = get_channel_duty(IBUS_CHAN_RUDDER);
     
@@ -237,7 +237,7 @@ esp_err_t flight_control_init() {
     transition_state = TRANS_UNSET;
     current_trans_duty = 1.0;
     target_trans_duty = 1.0;
-    ibus_handle = ibus_duplex_init();
+    ibus_handle = ibus_rx_init();
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
         { 1050, 2050, CONFIG_RWTILT_GPIO },
@@ -285,12 +285,12 @@ esp_err_t flight_control_update() {
     gyro_control_read(&gyro_values);
 #endif
 
-    esp_err_t ret = ibus_duplex_update(ibus_handle);
+    esp_err_t ret = ibus_rx_update(ibus_handle);
     if (ret != ESP_OK) {
         return ret;
     }
 
-    ret = ibus_get_channel_values(ibus_handle, &ibus_values);
+    ret = ibus_get_rx_channel_values(ibus_handle, &ibus_values);
     if (ret != ESP_OK) {
         //TODO: fallback values?
         return ret;

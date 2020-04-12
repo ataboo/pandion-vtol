@@ -1,20 +1,19 @@
-#include "ibus_duplex.h"
+#include "ibus_rx.h"
 
 #define IBUS_UART_BUFFER_SIZE 2048
 #define IBUS_UART_QUEUE_SIZE 10
 #define IBUS_UART_READ_BUFFER_SIZE 1024
 
-static const char* TAG = "IBUS_DUPLEX";
+static const char* TAG = "IBUS_RX";
 
-struct ibus_duplex_handle_impl {
-    ibus_channel_vals_t values;
+struct ibus_rx_handle_impl {
+    ibus_rx_channel_vals_t values;
     TaskHandle_t task_handle;
     QueueHandle_t rx_queue_handle;
-    QueueHandle_t tx_queue_handle;
     uint8_t *data_buffer;
 };
 
-static void ibus_init_rx_uart(ibus_duplex_handle_t handle) {
+static void ibus_init_rx_uart(ibus_rx_handle_t handle) {
     uart_config_t uart_config = {
         .baud_rate = CONFIG_IBUS_UART_RX_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
@@ -30,23 +29,7 @@ static void ibus_init_rx_uart(ibus_duplex_handle_t handle) {
     uart_flush_input(CONFIG_IBUS_UART_RX_NUM);
 }
 
-#if CONFIG_IBUS_UART_TX_ACTIVE
-static void ibus_init_tx_uart(ibus_duplex_handle_t handle) {
-    uart_config_t uart_config = {
-        .baud_rate = CONFIG_IBUS_UART_TX_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    
-    ESP_ERROR_CHECK(uart_param_config(CONFIG_IBUS_UART_TX_NUM, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(CONFIG_IBUS_UART_TX_NUM, CONFIG_IBUS_UART_TX_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    ESP_ERROR_CHECK(uart_driver_install(CONFIG_IBUS_UART_TX_NUM, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, &handle->tx_queue_handle, 0));
-}
-#endif
-
-static esp_err_t parse_channel_values(ibus_duplex_handle_t handle, uint8_t* data, int len) {
+static esp_err_t parse_channel_values(ibus_rx_handle_t handle, uint8_t* data, int len) {
     if(len < 32) {
         ESP_LOGE(TAG, "Cannot parse channel values as buffer is too short %d.", len);
         return ESP_FAIL;
@@ -87,7 +70,7 @@ static esp_err_t parse_channel_values(ibus_duplex_handle_t handle, uint8_t* data
     return ESP_OK;
 }
 
-esp_err_t ibus_duplex_update(ibus_duplex_handle_t handle) {
+esp_err_t ibus_rx_update(ibus_rx_handle_t handle) {
     int len;
 
     ESP_ERROR_CHECK(uart_get_buffered_data_len(CONFIG_IBUS_UART_RX_NUM, (size_t*)&len));
@@ -103,10 +86,10 @@ esp_err_t ibus_duplex_update(ibus_duplex_handle_t handle) {
     return ESP_FAIL;
 }
 
-ibus_duplex_handle_t ibus_duplex_init() {
+ibus_rx_handle_t ibus_rx_init() {
     uint8_t buffer[IBUS_UART_READ_BUFFER_SIZE] = {0};
 
-    ibus_duplex_handle_t ibus_handle = (ibus_duplex_handle_t)malloc(sizeof(struct ibus_duplex_handle_impl));
+    ibus_rx_handle_t ibus_handle = (ibus_rx_handle_t)malloc(sizeof(struct ibus_rx_handle_impl));
     ibus_handle->data_buffer = (uint8_t*)&buffer;
 
     ibus_init_rx_uart(ibus_handle);
@@ -117,18 +100,14 @@ ibus_duplex_handle_t ibus_duplex_init() {
     return ibus_handle;
 }
 
-void ibus_duplex_terminate(ibus_duplex_handle_t handle) {
+void ibus_rx_terminate(ibus_rx_handle_t handle) {
     ESP_ERROR_CHECK_WITHOUT_ABORT(uart_driver_delete(CONFIG_IBUS_UART_RX_NUM));
 #if CONFIG_IBUS_UART_TX_ACTIVE
     ESP_ERROR_CHECK_WITHOUT_ABORT(uart_driver_delete(CONFIG_IBUS_UART_TX_NUM));
 #endif
 }
 
-uint16_t ibus_get_channel_value(ibus_duplex_handle_t ibus_handle, int channel) {
-    return ibus_handle->values.channels[channel];
-}
-
-esp_err_t ibus_get_channel_values(ibus_duplex_handle_t ibus_handle, ibus_channel_vals_t* channel_vals) {
+esp_err_t ibus_get_rx_channel_values(ibus_rx_handle_t ibus_handle, ibus_rx_channel_vals_t* channel_vals) {
     *channel_vals = ibus_handle->values;
     
     return ESP_OK;

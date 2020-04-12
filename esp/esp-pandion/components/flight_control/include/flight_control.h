@@ -2,7 +2,7 @@
 
 #include "axis_pid.h"
 #include "gyro_control.h"
-#include "ibus_duplex.h"
+#include "ibus_rx.h"
 #include "servo_control.h"
 #include "dshot_esc.h"
 #include "math.h"

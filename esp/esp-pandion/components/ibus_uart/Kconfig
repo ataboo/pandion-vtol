@@ -1,46 +1,26 @@
-menu "IBus Duplex"
-    config IBUS_UART_RX_NUM
-        int "RX UART Number"
+menu "IBus Receiver UART"
+    config IBUS_CTRL_UART_NUM
+        int "IBus Control UART Number"
         range 0 2
         default 1
     
-    config IBUS_UART_RX_GPIO
-        int "RX UART GPIO Pin"
+    config IBUS_CTRL_GPIO
+        int "IBus Control GPIO Pin"
         range -1 39
         default 16
 
-    config IBUS_UART_RX_BAUD_RATE
-        int "RX UART Baud Rate"
-        range 4800 5000000
-        default 115200
-
-    config IBUS_UART_SUMCHK_ACTIVE
-        bool "Sum-check Active"
-        default true
-
-    config IBUS_UART_TX_ACTIVE
-        bool "IBus forwarding on"
-        help 
-            Transmit IBus data received to another UART.
-        default false
-
-    config IBUS_UART_TX_NUM
-        int "TX UART Number"
-        depends on IBUS_UART_TX_ACTIVE
+    config IBUS_SENSOR_UART_NUM
+        int "IBus Sensor UART Number"
         range 0 2
         default 2
 
-    config IBUS_UART_TX_GPIO
-        int "TX UART GPIO Pin"
-        depends on IBUS_UART_TX_ACTIVE
-        help
-            Select the pin to transmit forward IBus data on.
+    config IBUS_SENSOR_RX_GPIO
+        int "IBus Sensor Rx GPIO Pin"
         range -1 39
-        default -1
+        default 9
 
-    config IBUS_UART_TX_BAUD_RATE
-        int "RX UART Baud Rate"
-        depends on IBUS_UART_TX_ACTIVE
-        range 4800 5000000
-        default 115200
+    config IBUS_SENSOR_TX_GPIO
+        int "IBus Sensor Tx GPIO Pin"
+        range -1 39
+        default 10
 endmenu

@@ -37,8 +37,8 @@ static axis_pid_constants_t roll_pid_k;
 static axis_pid_constants_t pitch_pid_k;
 static axis_pid_constants_t yaw_pid_k;
 
-static ibus_rx_handle_t ibus_handle;
-static ibus_rx_channel_vals_t ibus_values;
+// static ibus_rx_handle_t ibus_rx_handle;
+static ibus_ctrl_channel_vals_t ibus_values;
 static transition_state_t transition_state;
 static servo_ctrl_handle_t servo_handle;
 static dshot_handle_t lw_dshot;
@@ -64,7 +64,7 @@ static float get_channel_duty(uint8_t channel_idx) {
 }
 
 static transition_state_t get_transition_state() {
-    float trans_channel_val = get_channel_duty(IBUS_CHAN_TRANSITION);
+    float trans_channel_val = get_channel_duty(IBUS_RX_CHAN_TRANSITION);
     if (trans_channel_val < -0.3) {
         return TRANS_VERTICAL;
     } else if (trans_channel_val < 0.3) {
@@ -187,10 +187,10 @@ static void update_yaw() {
 
 static void update_input_axes() {
     input_axes.roll = get_channel_duty(IBUS_RX_CHAN_ROLL);
-    input_axes.pitch = get_channel_duty(IBUS_CHAN_PITCH);
-    input_axes.yaw = get_channel_duty(IBUS_CHAN_RUDDER);
+    input_axes.pitch = get_channel_duty(IBUS_RX_CHAN_PITCH);
+    input_axes.yaw = get_channel_duty(IBUS_RX_CHAN_RUDDER);
     
-    input_axes.throttle = get_channel_duty(IBUS_CHAN_THROTTLE);
+    input_axes.throttle = get_channel_duty(IBUS_RX_CHAN_THROTTLE);
 
     if (input_axes.throttle < -0.9) {
         input_axes.throttle = -1.0;
@@ -237,7 +237,7 @@ esp_err_t flight_control_init() {
     transition_state = TRANS_UNSET;
     current_trans_duty = 1.0;
     target_trans_duty = 1.0;
-    ibus_handle = ibus_rx_init();
+    // ibus_rx_handle = ibus_rx_init();
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
         { 1050, 2050, CONFIG_RWTILT_GPIO },
@@ -285,25 +285,29 @@ esp_err_t flight_control_update() {
     gyro_control_read(&gyro_values);
 #endif
 
-    esp_err_t ret = ibus_rx_update(ibus_handle);
-    if (ret != ESP_OK) {
-        return ret;
-    }
+    // esp_err_t ret = ibus_rx_update(ibus_rx_handle);
+    // if (ret != ESP_OK) {
+    //     return ret;
+    // }
 
-    ret = ibus_get_rx_channel_values(ibus_handle, &ibus_values);
-    if (ret != ESP_OK) {
-        //TODO: fallback values?
-        return ret;
-    }
+    // ret = ibus_get_rx_channel_values(ibus_rx_handle, &ibus_values);
+    // if (ret != ESP_OK) {
+    //     //TODO: fallback values?
+    //     return ret;
+    // }
 
-    battery_meter_update();
+    // battery_meter_update();
 
-    update_input_axes();
-    update_transition_state(false);
+    // ESP_LOGI(TAG, "battery: %d time: %lld", battery_meter_mv(), esp_timer_get_time());
 
-    update_roll();
-    update_pitch();
-    update_yaw();
+    ESP_LOGI(TAG, "Time: %lld", esp_timer_get_time());
+
+    // update_input_axes();
+    // update_transition_state(false);
+
+    // update_roll();
+    // update_pitch();
+    // update_yaw();
 
     return ESP_OK;
 }

@@ -45,3 +45,5 @@ typedef struct {
 esp_err_t ibus_init();
 
 esp_err_t ibus_test_checksum(uint8_t* data);
+
+uint16_t ibus_calculate_checksum(uint8_t* data);

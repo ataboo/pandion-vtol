@@ -6,7 +6,11 @@ static xQueueHandle timer_queue = NULL;
 static QueueHandle_t control_uart_handle;
 static QueueHandle_t sensor_uart_handle;
 
-uint16_t ibus_calculate_checksum(uint8_t* data, size_t len) {
+static ibus_sensor_handle_t sensor_handle;
+static ibus_sensor_t extv_sensor;
+
+uint16_t ibus_calculate_checksum(uint8_t* data) {
+    uint8_t len = data[0];
     uint16_t checksum_sum = 0;
     for(int i=0; i<len-2; i++) {
         checksum_sum  += data[i];
@@ -22,7 +26,7 @@ esp_err_t ibus_test_checksum(uint8_t* data) {
         return ESP_FAIL;
     }
 
-    uint16_t computed_checksum = ibus_calculate_checksum(data, len);
+    uint16_t computed_checksum = ibus_calculate_checksum(data);
     uint16_t payload_checksum = (data[len-1]<<8) | data[len-2];
 
     if (computed_checksum != payload_checksum) {
@@ -97,18 +101,22 @@ static void timer_loop_task(void *arg) {
         xQueueReceive(timer_queue, &evt, portMAX_DELAY);
         
         if(ibus_control_update(&channel_vals) == ESP_OK) {
-            ESP_LOGI(TAG, "First Channel: %d", channel_vals.channels[0]);
+            // ESP_LOGI(TAG, "First Channel: %d", channel_vals.channels[0]);
         }
 
-        // if (ibus_sensor_update()) {
-        //     //
-        // }
+        if (ibus_sensor_update(sensor_handle)) {
+            extv_sensor.value++;
+        }
     }
 }
 
 esp_err_t ibus_init() {
     ibus_init_uart(control_uart_handle, CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO, UART_PIN_NO_CHANGE);
     ibus_init_uart(sensor_uart_handle, CONFIG_IBUS_SENSOR_UART_NUM, CONFIG_IBUS_SENSOR_RX_GPIO, CONFIG_IBUS_SENSOR_TX_GPIO);
+
+    sensor_handle = ibus_create_sensor_handle();
+    extv_sensor = ibus_create_sensor(IBUS_TYPE_EXTV, 0);
+    ibus_push_sensor(sensor_handle, &extv_sensor);
 
     esp_err_t ret = init_timer();
     if (ret != ESP_OK) {

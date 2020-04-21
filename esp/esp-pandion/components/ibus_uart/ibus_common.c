@@ -19,7 +19,7 @@ uint16_t ibus_calculate_checksum(uint8_t* data) {
     return 0xFFFF - checksum_sum;
 }
 
-esp_err_t ibus_test_checksum(uint8_t* data) {
+esp_err_t ibus_test_checksum(uint8_t* data, const char* tag) {
     uint8_t len = data[0];
     if (len <= 3 || len > IBUS_MAX_LENGTH) {
         ESP_LOGW(TAG, "Failed sumcheck length: %d", len);
@@ -30,7 +30,8 @@ esp_err_t ibus_test_checksum(uint8_t* data) {
     uint16_t payload_checksum = (data[len-1]<<8) | data[len-2];
 
     if (computed_checksum != payload_checksum) {
-        ESP_LOGW(TAG, "Failed checksum | computed: %x != payload: %x", computed_checksum, payload_checksum);
+        ESP_LOGW(TAG, "%s Failed checksum | computed: %x != payload: %x", tag, computed_checksum, payload_checksum);
+        ESP_LOGW(TAG, "%.2x, %.2x, %.2x, %.2x, %.2x, %.2x", data[0], data[1], data[2], data[3], data[4], data[5]);
         return ESP_FAIL;
     }
 
@@ -97,15 +98,24 @@ static esp_err_t ibus_init_uart(QueueHandle_t uart_queue_handle, uart_port_t uar
 static void timer_loop_task(void *arg) {
     timer_event_t evt;
     ibus_ctrl_channel_vals_t channel_vals;
+    uint64_t tick_count = 0;
     while(true) {
         xQueueReceive(timer_queue, &evt, portMAX_DELAY);
-        
+        tick_count+=evt.timer_counter_value;
+
         if(ibus_control_update(&channel_vals) == ESP_OK) {
-            // ESP_LOGI(TAG, "First Channel: %d", channel_vals.channels[0]);
+            //
         }
 
-        if (ibus_sensor_update(sensor_handle)) {
+        if (ibus_sensor_update(sensor_handle) == ESP_OK) {
+            //
+        }
+
+        if (tick_count >= 20000) {
             extv_sensor.value++;
+            tick_count = 0;
+
+            ESP_LOGI(TAG, "Sensor val: %d, First Channel: %d", extv_sensor.value, channel_vals.channels[0]);
         }
     }
 }

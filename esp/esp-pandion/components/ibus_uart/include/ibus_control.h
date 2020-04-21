@@ -14,6 +14,8 @@
 #define IBUS_RX_CHAN_TRANSITION   4  // R Shoulder 3-position
 #define IBUS_RX_CHAN_ARM          5  // L Shoulder 2-position
 
+#define IBUS_CMD_CONTROL 0x40
+
 typedef struct {
     uint16_t channels[14];
 } ibus_ctrl_channel_vals_t;

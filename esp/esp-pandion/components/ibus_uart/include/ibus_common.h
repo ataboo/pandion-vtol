@@ -17,18 +17,12 @@
 #define IBUS_TIMER_GROUP TIMER_GROUP_0
 #define IBUS_TIMER_IDX 0
 #define IBUS_TIMER_MS_ALARM (TIMER_BASE_CLK / IBUS_TIMER_DIVIDER / 1000)
-#define IBUS_MAX_SENSOR_COUNT 10
 
 #define IBUS_UART_QUEUE_SIZE 10
 #define IBUS_UART_BUFFER_SIZE 2048
 #define IBUS_UART_BAUD_RATE 115200
 #define IBUS_PREAMBLE_LENGTH 3
 #define IBUS_MAX_LENGTH 32
-
-#define IBUS_CMD_CONTROL 0x40
-#define IBUS_CMD_SENSOR_DISCOVER 0x80
-#define IBUS_CMD_SENSOR_TYPE 0x90
-#define IBUS_CMD_SENSOR_SEND 0xA0
 
 #define IBUS_UART_DEFAULT_CONFIG() {           \
         .baud_rate = IBUS_UART_BAUD_RATE,      \
@@ -44,6 +38,6 @@ typedef struct {
 
 esp_err_t ibus_init();
 
-esp_err_t ibus_test_checksum(uint8_t* data);
+esp_err_t ibus_test_checksum(uint8_t* data, const char* tag);
 
 uint16_t ibus_calculate_checksum(uint8_t* data);

@@ -4,6 +4,11 @@
 #include "esp_err.h"
 #include "ibus_common.h"
 
+#define IBUS_CMD_SENSOR_DISCOVER 0x80
+#define IBUS_CMD_SENSOR_TYPE 0x90
+#define IBUS_CMD_SENSOR_SEND 0xA0
+#define IBUS_MAX_SENSOR_COUNT 10
+
 typedef enum {
     IBUS_TYPE_INTV = 0x00,
     IBUS_TYPE_TEMP = 0x01,
@@ -14,17 +19,14 @@ typedef enum {
     IBUS_TYPE_FUEL = 0x06
 } ibus_sensor_type_t;
 
-typedef uint16_t ibus_sensor_value_t;
+typedef int16_t ibus_sensor_value_t;
 
 typedef struct {
     ibus_sensor_type_t sensor_type;
     ibus_sensor_value_t value;
-    uint64_t last_send;
 } ibus_sensor_t;
 
-typedef struct ibus_sensor_handle_impl {
-    
-} *ibus_sensor_handle_t;
+typedef struct ibus_sensor_handle_impl *ibus_sensor_handle_t;
 
 ibus_sensor_handle_t ibus_create_sensor_handle();
 

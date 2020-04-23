@@ -11,6 +11,7 @@
 #include "driver/gpio.h"
 #include "ibus_control.h"
 #include "ibus_sensor.h"
+#include "battery_meter.h"
 
 
 #define IBUS_TIMER_DIVIDER 16

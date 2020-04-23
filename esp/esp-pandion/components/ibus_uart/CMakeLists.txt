@@ -1,3 +1,3 @@
 idf_component_register(SRCS "ibus_control.c" "ibus_sensor.c" "ibus_common.c"
                        INCLUDE_DIRS "include"
-                       PRIV_REQUIRES )
+                       REQUIRES battery_meter )

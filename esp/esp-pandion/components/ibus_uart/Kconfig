@@ -17,10 +17,10 @@ menu "IBus Receiver UART"
     config IBUS_SENSOR_RX_GPIO
         int "IBus Sensor Rx GPIO Pin"
         range -1 39
-        default 9
+        default 32
 
     config IBUS_SENSOR_TX_GPIO
         int "IBus Sensor Tx GPIO Pin"
         range -1 39
-        default 9
+        default 33
 endmenu

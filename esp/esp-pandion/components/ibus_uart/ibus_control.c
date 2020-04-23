@@ -27,16 +27,16 @@ static esp_err_t parse_channel_values(ibus_ctrl_channel_vals_t* channel_vals, in
     return ESP_OK;
 }
 
-esp_err_t ibus_control_init() {
-    uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
+// esp_err_t ibus_control_init() {
+//     uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
     
-    esp_err_t ret = uart_param_config(CONFIG_IBUS_CTRL_UART_NUM, &uart_config);
-    ret |= uart_set_pin(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    ret |= uart_driver_install(uart_num, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, uart_queue_handle, 0);
-    ret |= uart_flush_input(CONFIG_IBUS_CTRL_UART_NUM);
+//     esp_err_t ret = uart_param_config(CONFIG_IBUS_CTRL_UART_NUM, &uart_config);
+//     ret |= uart_set_pin(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+//     ret |= uart_driver_install(CONFIG_IBUS_CTRL_UART_NUM, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, uart_queue_handle, 0);
+//     ret |= uart_flush_input(CONFIG_IBUS_CTRL_UART_NUM);
 
-    return ret;
-}
+//     return ret;
+// }
 
 esp_err_t ibus_control_update(ibus_ctrl_channel_vals_t* channel_vals) {
     int len;

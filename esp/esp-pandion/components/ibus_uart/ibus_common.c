@@ -109,12 +109,13 @@ static void timer_loop_task(void *arg) {
 
         if (ibus_sensor_update(sensor_handle) == ESP_OK) {
             //
+            battery_meter_update();
+            uint16_t millivolts = battery_meter_mv();
+            extv_sensor.value = millivolts;
         }
 
         if (tick_count >= 20000) {
-            extv_sensor.value++;
             tick_count = 0;
-
             ESP_LOGI(TAG, "Sensor val: %d, First Channel: %d", extv_sensor.value, channel_vals.channels[0]);
         }
     }
@@ -132,6 +133,8 @@ esp_err_t ibus_init() {
     if (ret != ESP_OK) {
         return ret;
     }
+
+    battery_meter_init();
 
     xTaskCreate(timer_loop_task, "ibus_timer_loop_task", 2048, NULL, 5, NULL);
 

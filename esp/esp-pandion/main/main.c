@@ -39,5 +39,5 @@ void app_main()
 
     // xTaskCreate(update_task, "update_task", 2048, NULL, 1, NULL);
 
-    ibus_init();
+    ibus_sensor_handle_t ibus_handle = ibus_init();
 }

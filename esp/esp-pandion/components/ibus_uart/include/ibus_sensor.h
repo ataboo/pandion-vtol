@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct ibus_sensor_handle_impl *ibus_sensor_handle_t;
 
-ibus_sensor_handle_t ibus_create_sensor_handle();
+ibus_sensor_handle_t ibus_sensor_init(uart_port_t uart_num, gpio_num_t rx_gpio, gpio_num_t tx_gpio);
 
 ibus_sensor_t ibus_create_sensor(ibus_sensor_type_t type, ibus_sensor_value_t value);
 

@@ -1,51 +1,67 @@
 #include "ibus_control.h"
 
+typedef struct {
+    uint8_t read_buffer[IBUS_UART_BUFFER_SIZE];
+    ibus_ctrl_channel_vals_t* channel_vals;
+    QueueHandle_t* uart_queue;
+} ibus_ctrl_handle_impl;
+
 static const char* TAG = "IBUS_CTRL";
 
-static uint8_t read_buffer[IBUS_UART_BUFFER_SIZE];
-
-static esp_err_t parse_channel_values(ibus_ctrl_channel_vals_t* channel_vals, int len) {
+static esp_err_t parse_channel_values(ibus_ctrl_handle_impl* handle_impl, int len) {
     if(len != 32) {
         ESP_LOGW(TAG, "Unnexpected IBus command length %d.", len);
         return ESP_FAIL;
     }
 
-    if (read_buffer[1] != IBUS_CMD_CONTROL) {
-        ESP_LOGW(TAG, "Unnexpected first char %x in ibus control command.", read_buffer[1]);
+    if (handle_impl->read_buffer[1] != IBUS_CMD_CONTROL) {
+        ESP_LOGW(TAG, "Unnexpected first char %x in ibus control command.", handle_impl->read_buffer[1]);
         return ESP_FAIL;
     }
 
-    esp_err_t ret = ibus_test_checksum(read_buffer, TAG);
+    esp_err_t ret = ibus_test_checksum(handle_impl->read_buffer, TAG);
     if (ret != ESP_OK) {
         return ret;
     }
 
     for(int i=0; i<28; i+=2) {
-        channel_vals->channels[i/2] = read_buffer[i+2] | (uint16_t)read_buffer[i+3] << 8;
+        handle_impl->channel_vals->channels[i/2] = handle_impl->read_buffer[i+2] | (uint16_t)handle_impl->read_buffer[i+3] << 8;
     }
 
     return ESP_OK;
 }
 
-// esp_err_t ibus_control_init() {
-//     uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
+ibus_ctrl_handle_t ibus_control_init(uart_port_t uart_num, gpio_num_t rx_gpio_pin) {
+    ibus_ctrl_handle_impl* handle_impl = malloc(sizeof(handle_impl));
+    handle_impl->channel_vals = malloc(sizeof(ibus_ctrl_channel_vals_t)); 
+    uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
     
-//     esp_err_t ret = uart_param_config(CONFIG_IBUS_CTRL_UART_NUM, &uart_config);
-//     ret |= uart_set_pin(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-//     ret |= uart_driver_install(CONFIG_IBUS_CTRL_UART_NUM, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, uart_queue_handle, 0);
-//     ret |= uart_flush_input(CONFIG_IBUS_CTRL_UART_NUM);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_param_config(uart_num, &uart_config));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_set_pin(uart_num, rx_gpio_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_driver_install(uart_num, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, handle_impl->uart_queue, 0));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_flush_input(uart_num));
 
-//     return ret;
-// }
+    return (ibus_ctrl_handle_t)handle_impl;
+}
 
-esp_err_t ibus_control_update(ibus_ctrl_channel_vals_t* channel_vals) {
+esp_err_t ibus_control_update(ibus_ctrl_handle_t handle) {
+    ibus_ctrl_handle_impl* handle_impl = (ibus_ctrl_handle_impl*)handle;
+    
     int len;
     ESP_ERROR_CHECK(uart_get_buffered_data_len(CONFIG_IBUS_CTRL_UART_NUM, (size_t*)&len));
     if (len > 0) {
-        len = uart_read_bytes(CONFIG_IBUS_CTRL_UART_NUM, read_buffer, IBUS_UART_BUFFER_SIZE, 1 / portTICK_RATE_MS);
+        len = uart_read_bytes(CONFIG_IBUS_CTRL_UART_NUM, handle_impl->read_buffer, IBUS_UART_BUFFER_SIZE, 1 / portTICK_RATE_MS);
 
-        return parse_channel_values(channel_vals, len);
+        return parse_channel_values(handle_impl, len);
     }
 
     return ESP_FAIL;
+}
+
+void ibus_control_channel_values(ibus_ctrl_handle_t handle, ibus_ctrl_channel_vals_t* channel_vals) {
+    ibus_ctrl_handle_impl* handle_impl = (ibus_ctrl_handle_impl*) handle;
+
+    for(int i=0; i<IBUS_RX_CHAN_COUNT; i++) {
+        channel_vals->channels[i] = handle_impl->channel_vals->channels[i];
+    }
 }

@@ -4,14 +4,22 @@ static const char* TAG = "IBUS_SENSOR";
 
 typedef struct {
     int sensor_count;
+    QueueHandle_t* uart_queue;
     uint8_t read_buffer[IBUS_UART_BUFFER_SIZE];
     uint8_t write_buffer[IBUS_UART_BUFFER_SIZE];
     ibus_sensor_t* sensors[IBUS_MAX_SENSOR_COUNT];
 } ibus_sensor_handle_impl;
 
-ibus_sensor_handle_t ibus_create_sensor_handle() {
+ibus_sensor_handle_t ibus_sensor_init(uart_port_t uart_num, gpio_num_t rx_gpio, gpio_num_t tx_gpio) {
     ibus_sensor_handle_impl* handle_impl = malloc(sizeof(ibus_sensor_handle_impl));
     handle_impl->sensor_count = 0;
+
+    uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
+    
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_param_config(uart_num, &uart_config));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_set_pin(uart_num, rx_gpio, tx_gpio, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_driver_install(uart_num, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, handle_impl->uart_queue, 0));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(uart_flush_input(uart_num));
 
     return (ibus_sensor_handle_t)handle_impl;
 }

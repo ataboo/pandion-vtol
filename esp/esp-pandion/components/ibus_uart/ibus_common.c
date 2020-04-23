@@ -3,9 +3,8 @@
 static const char* TAG = "IBUS_COMMON";
 
 static xQueueHandle timer_queue = NULL;
-static QueueHandle_t control_uart_handle;
-static QueueHandle_t sensor_uart_handle;
 
+static ibus_ctrl_handle_t ctrl_handle;
 static ibus_sensor_handle_t sensor_handle;
 static ibus_sensor_t extv_sensor;
 
@@ -31,7 +30,7 @@ esp_err_t ibus_test_checksum(uint8_t* data, const char* tag) {
 
     if (computed_checksum != payload_checksum) {
         ESP_LOGW(TAG, "%s Failed checksum | computed: %x != payload: %x", tag, computed_checksum, payload_checksum);
-        ESP_LOGW(TAG, "%.2x, %.2x, %.2x, %.2x, %.2x, %.2x", data[0], data[1], data[2], data[3], data[4], data[5]);
+        // ESP_LOGW(TAG, "%.2x, %.2x, %.2x, %.2x, %.2x, %.2x", data[0], data[1], data[2], data[3], data[4], data[5]);
         return ESP_FAIL;
     }
 
@@ -84,27 +83,17 @@ static esp_err_t init_timer() {
     return ESP_OK;
 }
 
-static esp_err_t ibus_init_uart(QueueHandle_t uart_queue_handle, uart_port_t uart_num, int rx_pin_num, int tx_pin_num) {
-    uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
-    
-    esp_err_t ret = uart_param_config(uart_num, &uart_config);
-    ret |= uart_set_pin(uart_num, tx_pin_num, rx_pin_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    ret |= uart_driver_install(uart_num, IBUS_UART_BUFFER_SIZE, IBUS_UART_BUFFER_SIZE, IBUS_UART_QUEUE_SIZE, uart_queue_handle, 0);
-    ret |= uart_flush_input(uart_num);
-
-    return ret;
-}
-
 static void timer_loop_task(void *arg) {
     timer_event_t evt;
-    ibus_ctrl_channel_vals_t channel_vals;
+    ibus_ctrl_channel_vals_t* channel_vals = malloc(sizeof(ibus_ctrl_channel_vals_t));
     uint64_t tick_count = 0;
     while(true) {
         xQueueReceive(timer_queue, &evt, portMAX_DELAY);
         tick_count+=evt.timer_counter_value;
 
-        if(ibus_control_update(&channel_vals) == ESP_OK) {
+        if(ibus_control_update(ctrl_handle) == ESP_OK) {
             //
+            ibus_control_channel_values(ctrl_handle, channel_vals);
         }
 
         if (ibus_sensor_update(sensor_handle) == ESP_OK) {
@@ -116,16 +105,15 @@ static void timer_loop_task(void *arg) {
 
         if (tick_count >= 20000) {
             tick_count = 0;
-            ESP_LOGI(TAG, "Sensor val: %d, First Channel: %d", extv_sensor.value, channel_vals.channels[0]);
+            ESP_LOGI(TAG, "Sensor val: %d, First Channel: %d", extv_sensor.value, channel_vals->channels[0]);
         }
     }
 }
 
 esp_err_t ibus_init() {
-    ibus_init_uart(control_uart_handle, CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO, UART_PIN_NO_CHANGE);
-    ibus_init_uart(sensor_uart_handle, CONFIG_IBUS_SENSOR_UART_NUM, CONFIG_IBUS_SENSOR_RX_GPIO, CONFIG_IBUS_SENSOR_TX_GPIO);
-
-    sensor_handle = ibus_create_sensor_handle();
+    ctrl_handle = ibus_control_init(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO);
+    sensor_handle = ibus_sensor_init(CONFIG_IBUS_SENSOR_UART_NUM, CONFIG_IBUS_SENSOR_RX_GPIO, CONFIG_IBUS_SENSOR_TX_GPIO);
+    
     extv_sensor = ibus_create_sensor(IBUS_TYPE_EXTV, 0);
     ibus_push_sensor(sensor_handle, &extv_sensor);
 

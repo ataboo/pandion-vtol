@@ -7,17 +7,26 @@
 #include "ibus_common.h"
 
 // Mode 2
-#define IBUS_RX_CHAN_ROLL         0  // Right stick L/R
-#define IBUS_RX_CHAN_PITCH        1  // Right stick U/D
-#define IBUS_RX_CHAN_THROTTLE     2  // Left stick U/D
-#define IBUS_RX_CHAN_RUDDER       3  // Left stick L/R
-#define IBUS_RX_CHAN_TRANSITION   4  // R Shoulder 3-position
-#define IBUS_RX_CHAN_ARM          5  // L Shoulder 2-position
+typedef enum {
+    IBUS_RX_CHAN_ROLL = 0,    // Right stick L/R
+    IBUS_RX_CHAN_PITCH,       // Right stick U/D
+    IBUS_RX_CHAN_THROTTLE,    // Left stick U/D
+    IBUS_RX_CHAN_RUDDER,      // Left stick L/R
+    IBUS_RX_CHAN_TRANSITION,  // R Shoulder 3-position
+    IBUS_RX_CHAN_ARM          // L Shoulder 2-position
+} ibus_ctrl_channel_t;
 
-#define IBUS_CMD_CONTROL 0x40
+#define IBUS_RX_CHAN_COUNT  14
+#define IBUS_CMD_CONTROL    0x40
 
 typedef struct {
-    uint16_t channels[14];
+    uint16_t channels[IBUS_RX_CHAN_COUNT];
 } ibus_ctrl_channel_vals_t;
 
-esp_err_t ibus_control_update(ibus_ctrl_channel_vals_t* handle);
+typedef struct ibus_ctrl_handle_impl *ibus_ctrl_handle_t;
+
+ibus_ctrl_handle_t ibus_control_init(uart_port_t uart_num, gpio_num_t rx_gpio_pin);
+
+esp_err_t ibus_control_update(ibus_ctrl_handle_t handle);
+
+void ibus_control_channel_values(ibus_ctrl_handle_t handle, ibus_ctrl_channel_vals_t* vals);

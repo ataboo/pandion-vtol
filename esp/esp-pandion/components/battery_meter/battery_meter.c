@@ -30,7 +30,7 @@ void battery_meter_update() {
     mean_sum = mean_mv * (BATTERY_LEVEL_MEAN_SAMPLE_COUNT - 1) + current_mv;
     mean_mv = mean_sum / BATTERY_LEVEL_MEAN_SAMPLE_COUNT;
 
-    ESP_LOGI(TAG, "Battery: %d, %d, %d, %d", current_mv, mean_mv, battery_meter_mv(), battery_meter_state());
+    ESP_LOGD(TAG, "Battery: %d, %d, %d, %d", current_mv, mean_mv, battery_meter_mv(), battery_meter_state());
 }
 
 uint32_t battery_meter_mv() {

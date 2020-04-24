@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "esp_task_wdt.h"
 #include "ibus_common.h"
+#include <string.h>
 
 // Mode 2
 typedef enum {

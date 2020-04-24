@@ -30,7 +30,6 @@ esp_err_t ibus_test_checksum(uint8_t* data, const char* tag) {
 
     if (computed_checksum != payload_checksum) {
         ESP_LOGW(TAG, "%s Failed checksum | computed: %x != payload: %x", tag, computed_checksum, payload_checksum);
-        // ESP_LOGW(TAG, "%.2x, %.2x, %.2x, %.2x, %.2x, %.2x", data[0], data[1], data[2], data[3], data[4], data[5]);
         return ESP_FAIL;
     }
 
@@ -100,7 +99,7 @@ static void timer_loop_task(void *arg) {
             //
             battery_meter_update();
             uint16_t millivolts = battery_meter_mv();
-            extv_sensor.value = millivolts;
+            extv_sensor.value = millivolts / 10;
         }
 
         if (tick_count >= 20000) {

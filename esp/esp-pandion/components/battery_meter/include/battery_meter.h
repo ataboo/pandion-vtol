@@ -7,13 +7,14 @@
 #include "esp_adc_cal.h"
 
 // $IDF_PATH/components/esptool_py/esptool/espefuse.py --port /dev/ttyUSB0 adc_info
-#define BATTERY_LEVEL_VREF_MV 1121
+#define BATTERY_LEVEL_VREF_MV 1041
+// #define BATTERY_LEVEL_VREF_MV 980
 #define BATTERY_LEVEL_MEAN_SAMPLE_COUNT 64
-#define BATTERY_LEVEL_VREF_MV 1121
 // Voltage divider -- R1 690kOhn R2 220kOhm (theoretical)
 // #define BATTERY_GPIO_VOLTAGE_FACTOR 0.24175824175
 // Measured
-#define BATTERY_GPIO_VOLTAGE_FACTOR 0.2380952381
+// #define BATTERY_GPIO_VOLTAGE_FACTOR 0.23611111
+#define BATTERY_GPIO_VOLTAGE_FACTOR 0.238
 #define battery_vcc_to_gpio_int(vcc) ((int)(vcc * BATTERY_GPIO_VOLTAGE_FACTOR))
 //12.9V
 #define BATTERY_LEVEL_OVER_MV battery_vcc_to_gpio_int(12900)

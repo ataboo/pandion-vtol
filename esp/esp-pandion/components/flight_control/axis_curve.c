@@ -1,4 +1,4 @@
-#include "axis_curve.h"
+#include "flight_control.h"
 
 typedef struct {
     float curve;

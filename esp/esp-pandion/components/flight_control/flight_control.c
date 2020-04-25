@@ -2,14 +2,16 @@
 
 #define MAX_ROLL_THRUST_DIFFERENTIAL 0.15
 #define MAX_YAW_THRUST_DIFFERENTIAL 0.15
-#define AFT_PROP_FACTOR 0.2
 #define TRANS_DUTY_STEP 0.01
 
 #define MAX_ROLL_RATE 45.0
 #define MAX_PITCH_RATE 45.0
 #define MAX_YAW_RATE 60.0
 
+// +/- factor from 0 where aft prop input forced to 0.
 #define AFT_PROP_DEADZONE 0.05
+// Multiplier for aft prop magnitude 0...1.
+#define AFT_PROP_SCALAR 0.5
 
 typedef struct {
     float roll;
@@ -37,8 +39,13 @@ static axis_pid_constants_t roll_pid_k;
 static axis_pid_constants_t pitch_pid_k;
 static axis_pid_constants_t yaw_pid_k;
 
-// static ibus_rx_handle_t ibus_rx_handle;
-static ibus_ctrl_channel_vals_t ibus_values;
+static xQueueHandle timer_queue = NULL;
+
+static ibus_ctrl_handle_t ctrl_handle;
+static ibus_sensor_handle_t sensor_handle;
+static ibus_sensor_t extv_sensor;
+
+static ibus_ctrl_channel_vals_t* channel_vals;
 static transition_state_t transition_state;
 static servo_ctrl_handle_t servo_handle;
 static dshot_handle_t lw_dshot;
@@ -60,7 +67,7 @@ static float clampf(float value, float lower, float upper) {
 }
 
 static float get_channel_duty(uint8_t channel_idx) {
-    return (ibus_values.channels[channel_idx] - 1500) / 500.0;
+    return (channel_vals->channels[channel_idx] - 1500) / 500.0;
 }
 
 static transition_state_t get_transition_state() {
@@ -140,12 +147,14 @@ static void update_roll() {
 
 static void update_pitch() {
     float pitch_unit;
-
-    if (input_axes.pitch < -AFT_PROP_DEADZONE) {
-        pitch_unit = -(input_axes.pitch + AFT_PROP_DEADZONE) / (1-AFT_PROP_DEADZONE) * 0.5;
-    } else if (input_axes.pitch > AFT_PROP_DEADZONE) {
-        pitch_unit = 0.5 + (input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE) * 0.5;
+    if (input_axes.pitch <= -AFT_PROP_DEADZONE) {
+        // pitch | -1...-DEADZONE => unit | 0.5...0.0
+        pitch_unit = AFT_PROP_SCALAR * 0.5 * (-input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE);
+    } else if (input_axes.pitch >= AFT_PROP_DEADZONE) {
+        // pitch | +DEADZONE...1 => unit | 0.5...1.0
+        pitch_unit = 0.5 + AFT_PROP_SCALAR * 0.5 * (input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE); 
     } else {
+        // pitch in deadzone
         pitch_unit = 0;
     }
 
@@ -197,7 +206,7 @@ static void update_input_axes() {
     }
 
 #ifdef PANDION_GYRO_ENABLED
-    bool armed = get_channel_duty(IBUS_CHAN_ARM) > 0.5;
+    bool armed = get_channel_duty(IBUS_RX_CHAN_ARM) > 0.5;
     if (!stabilization_armed && armed) {
         pid_reset(roll_pid_handle);
         pid_reset(pitch_pid_handle);
@@ -219,11 +228,58 @@ static void update_input_axes() {
     input_axes.pitch = axis_curve_calculate(pitch_curve_handle, input_axes.pitch);
     input_axes.yaw = axis_curve_calculate(yaw_curve_handle, input_axes.yaw);
 
-    ESP_LOGD(TAG, "Roll %f, Pitch %f, Yaw %f", input_axes.roll, input_axes.pitch, input_axes.yaw);
+    ESP_LOGD(TAG, "Roll %f, Pitch %f, Yaw %f, Throttle %f", input_axes.roll, input_axes.pitch, input_axes.yaw, input_axes.throttle);
+}
+
+static void flight_control_update_task(void *arg) {
+    gyro_control_read(&gyro_values);
+    battery_meter_update();
+    extv_sensor.value = battery_meter_mv() / 10;
+    update_input_axes();
+    update_transition_state(false);
+    update_roll();
+    update_pitch();
+    update_yaw();
+
+    vTaskDelete(NULL);
+}
+
+#ifdef PANDION_GYRO_ENABLED
+static void update_gyro_task(void *arg) {
+    gyro_control_read(&gyro_values);
+    
+    vTaskDelete(NULL);
+}
+#endif
+
+static void loop_task(void *arg) {
+    timer_event_t evt;
+    channel_vals = ibus_channel_vals_init();
+    uint64_t tick_count = 0;
+    while(true) {
+        xQueueReceive(timer_queue, &evt, portMAX_DELAY);
+        tick_count+=evt.timer_counter_value;
+
+        #ifdef PANDION_GYRO_ENABLED
+            xTaskCreate(update_gyro_task, "update_gyro_task", 2048, NULL, 5, NULL);
+        #endif
+
+        if (ibus_sensor_update(sensor_handle) == ESP_OK) {
+            //
+        }
+
+        if(ibus_control_update(ctrl_handle) == ESP_OK) {
+            ibus_control_channel_values(ctrl_handle, channel_vals);
+            ESP_LOGD(TAG, "Vals: %d, %d, %d, %d, %d, %d", channel_vals->channels[0], channel_vals->channels[1], channel_vals->channels[2], channel_vals->channels[3], channel_vals->channels[4], channel_vals->channels[5]);
+            
+            xTaskCreate(flight_control_update_task, "flight_control_update_task", 2048, NULL, 5, NULL);
+        }
+    }
+
+    vTaskDelete(NULL);
 }
 
 esp_err_t flight_control_init() {
-    
 #ifdef PANDION_GYRO_ENABLED
     esp_err_t ret = gyro_control_init();
     if (ret != ESP_OK) {
@@ -237,7 +293,11 @@ esp_err_t flight_control_init() {
     transition_state = TRANS_UNSET;
     current_trans_duty = 1.0;
     target_trans_duty = 1.0;
-    // ibus_rx_handle = ibus_rx_init();
+
+    ctrl_handle = ibus_control_init(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO);
+    sensor_handle = ibus_sensor_init(CONFIG_IBUS_SENSOR_UART_NUM, CONFIG_IBUS_SENSOR_RX_GPIO, CONFIG_IBUS_SENSOR_TX_GPIO);
+    extv_sensor = ibus_create_sensor(IBUS_TYPE_EXTV, 0);
+    ibus_push_sensor(sensor_handle, &extv_sensor);
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
         { 1050, 2050, CONFIG_RWTILT_GPIO },
@@ -277,37 +337,10 @@ esp_err_t flight_control_init() {
     pitch_pid_handle = pid_init("y_axis", &pitch_pid_k.vertical);
     yaw_pid_handle = pid_init("z_axis", &yaw_pid_k.vertical);
 
-    return ESP_OK;
-}
 
-esp_err_t flight_control_update() {
-#ifdef PANDION_GYRO_ENABLED
-    gyro_control_read(&gyro_values);
-#endif
+    timer_queue = init_timer();
 
-    // esp_err_t ret = ibus_rx_update(ibus_rx_handle);
-    // if (ret != ESP_OK) {
-    //     return ret;
-    // }
-
-    // ret = ibus_get_rx_channel_values(ibus_rx_handle, &ibus_values);
-    // if (ret != ESP_OK) {
-    //     //TODO: fallback values?
-    //     return ret;
-    // }
-
-    // battery_meter_update();
-
-    // ESP_LOGI(TAG, "battery: %d time: %lld", battery_meter_mv(), esp_timer_get_time());
-
-    ESP_LOGI(TAG, "Time: %lld", esp_timer_get_time());
-
-    // update_input_axes();
-    // update_transition_state(false);
-
-    // update_roll();
-    // update_pitch();
-    // update_yaw();
+    xTaskCreate(loop_task, "loop_task", 2048, NULL, 5, NULL);
 
     return ESP_OK;
 }

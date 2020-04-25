@@ -13,8 +13,8 @@ typedef enum {
     IBUS_RX_CHAN_PITCH,       // Right stick U/D
     IBUS_RX_CHAN_THROTTLE,    // Left stick U/D
     IBUS_RX_CHAN_RUDDER,      // Left stick L/R
-    IBUS_RX_CHAN_TRANSITION,  // R Shoulder 3-position
-    IBUS_RX_CHAN_ARM          // L Shoulder 2-position
+    IBUS_RX_CHAN_ARM,         // L Shoulder 2-position
+    IBUS_RX_CHAN_TRANSITION   // R Shoulder 3-position
 } ibus_ctrl_channel_t;
 
 #define IBUS_RX_CHAN_COUNT  14
@@ -25,6 +25,8 @@ typedef struct {
 } ibus_ctrl_channel_vals_t;
 
 typedef struct ibus_ctrl_handle_impl *ibus_ctrl_handle_t;
+
+ibus_ctrl_channel_vals_t* ibus_channel_vals_init();
 
 ibus_ctrl_handle_t ibus_control_init(uart_port_t uart_num, gpio_num_t rx_gpio_pin);
 

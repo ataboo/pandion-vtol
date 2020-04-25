@@ -31,10 +31,18 @@ static esp_err_t parse_channel_values(ibus_ctrl_handle_impl* handle_impl, int le
     return ESP_OK;
 }
 
-ibus_ctrl_handle_t ibus_control_init(uart_port_t uart_num, gpio_num_t rx_gpio_pin) {
+ibus_ctrl_channel_vals_t* ibus_channel_vals_init() {
     ibus_ctrl_channel_vals_t* channel_vals = malloc(sizeof(ibus_ctrl_channel_vals_t));
+    for(int i=0; i<IBUS_RX_CHAN_COUNT; i++) {
+        channel_vals->channels[i] = 1500;
+    }
+
+    return channel_vals;
+}
+
+ibus_ctrl_handle_t ibus_control_init(uart_port_t uart_num, gpio_num_t rx_gpio_pin) {
     ibus_ctrl_handle_impl* handle_impl = malloc(sizeof(ibus_ctrl_handle_impl));
-    handle_impl->channel_vals = channel_vals;
+    handle_impl->channel_vals = ibus_channel_vals_init();
 
     uart_config_t uart_config = IBUS_UART_DEFAULT_CONFIG();
     

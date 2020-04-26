@@ -1,0 +1,6 @@
+menu "ADC Volt Meter"
+    config VCC_METER_ADC_CHANNEL
+        int "VCC Meter ADC Channel"
+        range 0 9
+        default 0
+endmenu

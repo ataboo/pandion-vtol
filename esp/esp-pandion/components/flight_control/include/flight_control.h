@@ -2,14 +2,16 @@
 
 #include "axis_pid.h"
 #include "gyro_control.h"
-#include "ibus_duplex.h"
+#include "ibus_control.h"
 #include "servo_control.h"
 #include "dshot_esc.h"
 #include "math.h"
-#include "axis_curve.h"
 #include "battery_meter.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 
-// #define PANDION_GYRO_ENABLED
+#define PANDION_GYRO_ENABLED
 
 typedef enum {
     RWTILT_CHAN = 0,
@@ -30,4 +32,10 @@ typedef enum {
 
 esp_err_t flight_control_init();
 
-esp_err_t flight_control_update();
+xQueueHandle init_timer();
+
+typedef struct axis_curve_handle_impl *axis_curve_handle_t;
+
+axis_curve_handle_t axis_curve_init(float curve);
+
+float axis_curve_calculate(axis_curve_handle_t handle, float input);

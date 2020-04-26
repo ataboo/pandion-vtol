@@ -8,7 +8,7 @@ static uint32_t current_mv;
 static const char* TAG = "BATTERY_METER";
 
 static void read_voltage_level() {
-    esp_adc_cal_get_voltage(ADC_CHANNEL_0, adc_chars, &current_mv);
+    esp_adc_cal_get_voltage(CONFIG_VCC_METER_ADC_CHANNEL, adc_chars, &current_mv);
 }
 
 esp_err_t battery_meter_init() {
@@ -16,7 +16,7 @@ esp_err_t battery_meter_init() {
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_12Bit, BATTERY_LEVEL_VREF_MV, adc_chars);
 
     esp_err_t ret = adc1_config_width(ADC_WIDTH_12Bit);
-    ret |= adc1_config_channel_atten(ADC_CHANNEL_0, ADC_ATTEN_DB_11);
+    ret |= adc1_config_channel_atten(CONFIG_VCC_METER_ADC_CHANNEL, ADC_ATTEN_DB_11);
 
     battery_meter_update();
     mean_mv = current_mv;

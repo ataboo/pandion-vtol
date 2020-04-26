@@ -1,0 +1,26 @@
+menu "IBus Receiver UART"
+    config IBUS_CTRL_UART_NUM
+        int "IBus Control UART Number"
+        range 0 2
+        default 1
+    
+    config IBUS_CTRL_GPIO
+        int "IBus Control GPIO Pin"
+        range -1 39
+        default 16
+
+    config IBUS_SENSOR_UART_NUM
+        int "IBus Sensor UART Number"
+        range 0 2
+        default 2
+
+    config IBUS_SENSOR_RX_GPIO
+        int "IBus Sensor Rx GPIO Pin"
+        range -1 39
+        default 33
+
+    config IBUS_SENSOR_TX_GPIO
+        int "IBus Sensor Tx GPIO Pin"
+        range -1 39
+        default 32
+endmenu

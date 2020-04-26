@@ -9,7 +9,7 @@
 #define MAX_YAW_RATE 60.0
 
 // +/- factor from 0 where aft prop input forced to 0.
-#define AFT_PROP_DEADZONE 0.05
+#define AFT_PROP_DEADZONE 0.01
 // Multiplier for aft prop magnitude 0...1.
 #define AFT_PROP_SCALAR 0.5
 
@@ -232,8 +232,8 @@ static void update_input_axes() {
 }
 
 static void flight_control_update_task(void *arg) {
-    gyro_control_read(&gyro_values);
     battery_meter_update();
+    gyro_control_read(&gyro_values);  
     extv_sensor.value = battery_meter_mv() / 10;
     update_input_axes();
     update_transition_state(false);
@@ -244,14 +244,6 @@ static void flight_control_update_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-#ifdef PANDION_GYRO_ENABLED
-static void update_gyro_task(void *arg) {
-    gyro_control_read(&gyro_values);
-    
-    vTaskDelete(NULL);
-}
-#endif
-
 static void loop_task(void *arg) {
     timer_event_t evt;
     channel_vals = ibus_channel_vals_init();
@@ -259,10 +251,6 @@ static void loop_task(void *arg) {
     while(true) {
         xQueueReceive(timer_queue, &evt, portMAX_DELAY);
         tick_count+=evt.timer_counter_value;
-
-        #ifdef PANDION_GYRO_ENABLED
-            xTaskCreate(update_gyro_task, "update_gyro_task", 2048, NULL, 5, NULL);
-        #endif
 
         if (ibus_sensor_update(sensor_handle) == ESP_OK) {
             //
@@ -315,22 +303,22 @@ esp_err_t flight_control_init() {
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
     roll_pid_k = (axis_pid_constants_t){
-            .vertical = {0.01, 0.001, 0.005},
-        .horizontal = {0.015, 0.001, 0.00}
+        .vertical = {0.002, 0.0005, 0.0025},
+        .horizontal = {0.002, 0.0005, 0.00}
     };
 
     pitch_pid_k = (axis_pid_constants_t){
-        .vertical = {0.02, 0.001, 0.01},
-        .horizontal = {0.02, 0.001, 0.01}
+        .vertical = {0.04, 0.002, 0.0},
+        .horizontal = {0.04, 0.002, 0.0}
     };
 
     yaw_pid_k = (axis_pid_constants_t){
-        .vertical = {0.01, 0.001, 0.005},
-        .horizontal = {0.01, 0.001, 0.005}
+        .vertical = {0.002, 0.0001, 0.0},
+        .horizontal = {0.002, 0.0005, 0.0025}
     };
 
     roll_curve_handle = axis_curve_init(0.5);
-    pitch_curve_handle = axis_curve_init(0.5);
+    pitch_curve_handle = axis_curve_init(0.2);
     yaw_curve_handle = axis_curve_init(0.8);
 
     roll_pid_handle = pid_init("x_axis", &roll_pid_k.vertical);

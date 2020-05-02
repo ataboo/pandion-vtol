@@ -33,15 +33,15 @@ void wifi_init_softap(void)
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
-            .channel = EXAMPLE_ESP_WIFI_CHANNEL,
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
+            .ssid = CONFIG_WIFI_AP_SSID,
+            .ssid_len = strlen(CONFIG_WIFI_AP_SSID),
+            .channel = CONFIG_WIFI_CHANNEL,
+            .password = CONFIG_WIFI_AP_PASSWORD,
+            .max_connection = CONFIG_WIFI_MAX_CONNECTIONS,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK
         },
     };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
+    if (strlen(CONFIG_WIFI_AP_PASSWORD) == 0) {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
@@ -50,7 +50,7 @@ void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
+             CONFIG_WIFI_AP_SSID, CONFIG_WIFI_AP_PASSWORD, CONFIG_WIFI_CHANNEL);
 }
 
 esp_err_t wifi_ap_init() {
@@ -64,4 +64,6 @@ esp_err_t wifi_ap_init() {
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
+
+    return ESP_OK;
 }

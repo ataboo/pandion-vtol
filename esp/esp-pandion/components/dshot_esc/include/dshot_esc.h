@@ -38,7 +38,7 @@
 
 typedef struct {
     gpio_num_t gpio_num;
-    rmt_channel_id_t rmt_chan;
+    rmt_channel_t rmt_chan;
     char name[DSHOT_MAX_NAME_LEN];
 } dshot_cfg;
 

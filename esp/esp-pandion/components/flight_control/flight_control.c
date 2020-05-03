@@ -145,29 +145,35 @@ static void update_roll() {
     }
 }
 
-static void update_pitch() {
-    float pitch_unit;
+static float reversable_esc_pitch_unit() {
     if (input_axes.pitch <= -AFT_PROP_DEADZONE) {
         // pitch | -1...-DEADZONE => unit | 0.5...0.0
-        pitch_unit = AFT_PROP_SCALAR * 0.5 * (-input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE);
+        return AFT_PROP_SCALAR * 0.5 * (-input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE);
     } else if (input_axes.pitch >= AFT_PROP_DEADZONE) {
         // pitch | +DEADZONE...1 => unit | 0.5...1.0
-        pitch_unit = 0.5 + AFT_PROP_SCALAR * 0.5 * (input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE); 
+        return 0.5 + AFT_PROP_SCALAR * 0.5 * (input_axes.pitch - AFT_PROP_DEADZONE) / (1 - AFT_PROP_DEADZONE); 
     } else {
         // pitch in deadzone
-        pitch_unit = 0;
+        return 0;
     }
+}
+
+static void update_pitch() {
+    float pitch_unit;
 
     switch (transition_state)
     {
         case TRANS_UNSET:
         case TRANS_VERTICAL:
         case TRANS_MID:
+            pitch_unit = reversable_esc_pitch_unit();
             dshot_set_throttle(aft_dshot, pitch_unit);
             break;
         case TRANS_HORIZONTAL:
             //TODO: if input past threshold, use aft fan?
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, ELEVATOR_CHAN, input_axes.pitch));
+
+            pitch_unit = (-input_axes.pitch + 1) / 2;
+            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, ELEVATOR_CHAN, pitch_unit));
             break;
     }
 }
@@ -292,7 +298,7 @@ esp_err_t flight_control_init() {
         { 1050, 2050, CONFIG_LWTILT_GPIO },
         { 985, 2015, CONFIG_RWTRANS_GPIO },
         { 985, 2015, CONFIG_LWTRANS_GPIO },
-        { 1000, 2000, CONFIG_ELEVATOR_GPIO },
+        { 920, 2080, CONFIG_ELEVATOR_GPIO },
         { 1000, 2000, CONFIG_RUDDER_GPIO }
     };
 

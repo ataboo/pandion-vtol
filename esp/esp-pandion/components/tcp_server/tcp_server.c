@@ -7,20 +7,36 @@ typedef struct {
 
 static const char *TAG = "TCP_SERVER";
 static uint8_t rx_buffer[TCP_MAX_COMMAND_LENGTH];
+static uint8_t tx_buffer[TCP_MAX_COMMAND_LENGTH];
 static tcp_command_packet_t rx_packet_buffer;
 static tcp_command_packet_t tx_packet_buffer;
 static registered_handler_t handlers[TCP_MAX_HANDLER_COUNT];
 static int handler_count;
 
-static esp_err_t handle_command() {
+
+static esp_err_t send_command(int sock) {
+    tx_buffer[0] = tx_packet_buffer.command >> 8;
+    tx_buffer[1] = tx_packet_buffer.command & 0xFF;
+    for(int i=2; i<tx_packet_buffer.length; i++) {
+        tx_buffer[i] = tx_packet_buffer.payload[i-2];
+    }
+
+    send(sock, &tx_buffer, tx_packet_buffer.length, 0);
+
+    ESP_LOGI(TAG, "Sent command");
+
+    return ESP_OK;
+}
+
+static esp_err_t handle_command(int sock) {
     bool found_handler = false;
 
     for(int i=0; i<handler_count; i++) {
         if (handlers[i].command == rx_packet_buffer.command) {
-            tx_packet_buffer.command = -1;
+            tx_packet_buffer.command = 0;
             handlers[i].handler(rx_packet_buffer, &tx_packet_buffer);
-            if (tx_packet_buffer.command > -1 ) {
-                send_command();
+            if (tx_packet_buffer.command > 0) {
+                send_command(sock);
             }
             
             found_handler = true;
@@ -35,35 +51,20 @@ static esp_err_t handle_command() {
     return ESP_OK;
 }
 
-static esp_err_t send_command() {
-
-    // send() can return less bytes than supplied length.
-    // Walk-around for robust implementation. 
-    // int to_write = len;
-    // while (to_write > 0) {
-    //     int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
-    //     if (written < 0) {
-    //         ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-    //     }
-    //     to_write -= written;
-    // }
-
-    return ESP_OK;
-}
-
-static esp_err_t parse_command(int len) {
+static esp_err_t parse_command(int len, int sock) {
     if (len < 2) {
         ESP_LOGE(TAG, "Packet of length %d is too short.", len);
         return ESP_FAIL;
     }
 
+    rx_packet_buffer.length = len;
     rx_packet_buffer.command = rx_buffer[0] | rx_buffer[1] << 8;
     
     for (int i=2; i<len; i++) {
-        rx_packet_buffer.payload[i] = rx_buffer[i];
+        rx_packet_buffer.payload[i-2] = rx_buffer[i];
     }
 
-    handle_command();
+    handle_command(sock);
 
     return ESP_OK;
 }
@@ -81,7 +82,7 @@ static esp_err_t read_command(int sock) {
             rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
             ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
-            parse_command(len);
+            parse_command(len, sock);
         }
     } while (len > 0);
 

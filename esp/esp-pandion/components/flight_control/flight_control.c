@@ -11,7 +11,7 @@
 // +/- factor from 0 where aft prop input forced to 0.
 #define AFT_PROP_DEADZONE 0.01
 // Multiplier for aft prop magnitude 0...1.
-#define AFT_PROP_SCALAR 0.5
+#define AFT_PROP_SCALAR 0.8
 
 typedef struct {
     float roll;

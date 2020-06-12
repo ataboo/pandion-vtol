@@ -29,6 +29,4 @@ void app_main()
 
     wifi_ap_init();
     tcp_server_init();
-
-    tcp_server_add_handler(0x0103, handle_command);
 }

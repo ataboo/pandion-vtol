@@ -13,16 +13,16 @@ COMMANDS = [
     FloatGetCommand('get_pitch_d', 0x0115),
     FloatSetCommand('set_roll_p', 0x0116),
     FloatSetCommand('set_roll_i', 0x0117),
-    FloatSetCommand('set_roll_d', 0x0128),
+    FloatSetCommand('set_roll_d', 0x0118),
     FloatGetCommand('get_roll_p', 0x0119),
     FloatGetCommand('get_roll_i', 0x011a),
     FloatGetCommand('get_roll_d', 0x011b),
     FloatSetCommand('set_yaw_p', 0x011c),
     FloatSetCommand('set_yaw_i', 0x011d),
     FloatSetCommand('set_yaw_d', 0x011e),
-    FloatGetCommand('get_yaw_p', 0x011d),
-    FloatGetCommand('get_yaw_i', 0x011e),
-    FloatGetCommand('get_yaw_d', 0x011f)
+    FloatGetCommand('get_yaw_p', 0x011f),
+    FloatGetCommand('get_yaw_i', 0x0120),
+    FloatGetCommand('get_yaw_d', 0x0121)
 ]
 
 

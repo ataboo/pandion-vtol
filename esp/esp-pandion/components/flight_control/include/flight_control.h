@@ -36,6 +36,4 @@ xQueueHandle init_timer();
 
 typedef struct axis_curve_handle_impl *axis_curve_handle_t;
 
-axis_curve_handle_t axis_curve_init(float curve);
-
-float axis_curve_calculate(axis_curve_handle_t handle, float input);
+esp_err_t pid_control_init();

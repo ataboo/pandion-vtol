@@ -1,7 +1,7 @@
 #pragma once
 
 #include <esp_types.h>
-#include "esp_err.h"
+#include <esp_err.h>
 #include <string.h>
 #include <esp_log.h>
 
@@ -26,7 +26,3 @@ esp_err_t pid_reset(pid_handle_t handle);
 esp_err_t pid_set_gains(pid_handle_t handle, pid_constants_t* pid_constants);
 
 esp_err_t pid_terminate(pid_handle_t handle);
-
-axis_curve_handle_t axis_curve_init(float curve);
-
-float axis_curve_calculate(axis_curve_handle_t handle, float input);

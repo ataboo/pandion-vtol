@@ -31,6 +31,13 @@ typedef enum {
     TRANS_UNSET
 } transition_state_t;
 
+typedef struct {
+    float roll;
+    float pitch;
+    float yaw;
+    float throttle;
+} axis_duties_t;
+
 esp_err_t flight_control_init();
 
 xQueueHandle init_timer();

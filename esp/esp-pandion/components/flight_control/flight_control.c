@@ -13,12 +13,7 @@
 // Multiplier for aft prop magnitude 0...1.
 #define AFT_PROP_SCALAR 0.8
 
-typedef struct {
-    float roll;
-    float pitch;
-    float yaw;
-    float throttle;
-} axis_duties;
+
 
 typedef struct {
     pid_constants_t vertical;
@@ -60,7 +55,7 @@ static gyro_values_t gyro_values;
 static bool stabilization_armed;
 #endif
 
-static axis_duties input_axes;
+static axis_duties_t input_axes;
 
 static float clampf(float value, float lower, float upper) {
     return fmin(upper, fmax(lower, value));

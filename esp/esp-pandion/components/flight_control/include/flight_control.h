@@ -1,5 +1,6 @@
 #pragma once
 
+#include "axis_curve.h"
 #include "axis_pid.h"
 #include "gyro_control.h"
 #include "ibus_control.h"
@@ -10,6 +11,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "neutral_axis_stabilizer.h"
+#include "positive_axis_stabilizer.h"
+#include "flight_control_common.h"
 
 #define PANDION_GYRO_ENABLED
 
@@ -23,19 +27,8 @@ typedef enum {
     SERVO_CHAN_COUNT
 } servo_ctrl_channel_t;
 
-typedef enum {
-    TRANS_VERTICAL,
-    TRANS_MID,
-    TRANS_HORIZONTAL,
-    TRANS_UNSET
-} transition_state_t;
-
 esp_err_t flight_control_init();
 
 xQueueHandle init_timer();
 
-typedef struct axis_curve_handle_impl *axis_curve_handle_t;
-
-axis_curve_handle_t axis_curve_init(float curve);
-
-float axis_curve_calculate(axis_curve_handle_t handle, float input);
+esp_err_t pid_control_init();

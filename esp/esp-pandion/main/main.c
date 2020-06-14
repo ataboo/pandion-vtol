@@ -8,8 +8,6 @@
 #include "dshot_esc.h"
 #include "ibus_common.h"
 
-static const char* TAG = "PANDION_BUS_MIXER";
-
 void app_main()
 {
     esp_log_level_set("*", ESP_LOG_INFO);

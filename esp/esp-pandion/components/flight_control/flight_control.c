@@ -4,16 +4,10 @@
 #define MAX_YAW_THRUST_DIFFERENTIAL 0.15
 #define TRANS_DUTY_STEP 0.01
 
-#define MAX_ROLL_RATE 45.0
-#define MAX_PITCH_RATE 45.0
-#define MAX_YAW_RATE 60.0
-
 // +/- factor from 0 where aft prop input forced to 0.
 #define AFT_PROP_DEADZONE 0.01
 // Multiplier for aft prop magnitude 0...1.
 #define AFT_PROP_SCALAR 0.8
-
-
 
 typedef struct {
     pid_constants_t vertical;
@@ -22,17 +16,9 @@ typedef struct {
 
 static const char* TAG = "FLIGHT_CONTROL";
 
-static pid_handle_t roll_pid_handle;
-static pid_handle_t pitch_pid_handle;
-static pid_handle_t yaw_pid_handle;
-
 static axis_curve_handle_t roll_curve_handle;
 static axis_curve_handle_t pitch_curve_handle;
 static axis_curve_handle_t yaw_curve_handle;
-
-static axis_pid_constants_t roll_pid_k;
-static axis_pid_constants_t pitch_pid_k;
-static axis_pid_constants_t yaw_pid_k;
 
 static xQueueHandle timer_queue = NULL;
 
@@ -57,10 +43,6 @@ static bool stabilization_armed;
 
 static axis_duties_t input_axes;
 
-static float clampf(float value, float lower, float upper) {
-    return fmin(upper, fmax(lower, value));
-}
-
 static float get_channel_duty(uint8_t channel_idx) {
     return (channel_vals->channels[channel_idx] - 1500) / 500.0;
 }
@@ -82,27 +64,19 @@ static esp_err_t update_transition_state(bool force) {
     if (force || new_trans_state != transition_state) {
         ESP_LOGI(TAG, "New transition: %d", new_trans_state);
         transition_state = new_trans_state;
-        
+
         switch(transition_state) {
             case TRANS_UNSET:
                 ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
+                break;
             case TRANS_HORIZONTAL:
-                pid_set_gains(roll_pid_handle, &roll_pid_k.horizontal);
-                pid_set_gains(pitch_pid_handle, &pitch_pid_k.horizontal);
-                pid_set_gains(yaw_pid_handle, &yaw_pid_k.horizontal);
                 target_trans_duty = 0.0;
                 break;
             case TRANS_MID:
-                pid_set_gains(roll_pid_handle, &roll_pid_k.vertical);
-                pid_set_gains(pitch_pid_handle, &pitch_pid_k.vertical);
-                pid_set_gains(yaw_pid_handle, &yaw_pid_k.vertical);
                 target_trans_duty = 0.8;
                 break;
             default:
             case TRANS_VERTICAL:
-                pid_set_gains(roll_pid_handle, &roll_pid_k.vertical);
-                pid_set_gains(pitch_pid_handle, &pitch_pid_k.vertical);
-                pid_set_gains(yaw_pid_handle, &yaw_pid_k.vertical);
                 target_trans_duty = 1.0;
                 break;
         }
@@ -123,20 +97,17 @@ static esp_err_t update_transition_state(bool force) {
 static void update_roll() {
     float roll_unit = (input_axes.roll + 1) / 2;
     float throttle_unit = (input_axes.throttle + 1) / 2;
-    switch (transition_state)
-    {
-        case TRANS_UNSET:
-            ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
-        case TRANS_VERTICAL:
-        case TRANS_MID:
-            dshot_set_throttle(lw_dshot, clampf(throttle_unit + MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1));
-            dshot_set_throttle(rw_dshot, clampf(throttle_unit - MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1));
 
-            break;
-        case TRANS_HORIZONTAL:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1-roll_unit));
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, 1-roll_unit));
-            break;
+    if (transition_state == TRANS_UNSET) {
+        ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
+    }
+
+    if (transition_state == TRANS_HORIZONTAL) {
+        ESP_ERROR_CHECK_WITHOUT_ABORT(dshot_set_throttle(lw_dshot, clampf(throttle_unit + MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1)));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(dshot_set_throttle(rw_dshot, clampf(throttle_unit - MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1)));
+    } else {
+        ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1-roll_unit));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, 1-roll_unit));
     }
 }
 
@@ -156,20 +127,13 @@ static float reversable_esc_pitch_unit() {
 static void update_pitch() {
     float pitch_unit;
 
-    switch (transition_state)
-    {
-        case TRANS_UNSET:
-        case TRANS_VERTICAL:
-        case TRANS_MID:
-            pitch_unit = reversable_esc_pitch_unit();
-            dshot_set_throttle(aft_dshot, pitch_unit);
-            break;
-        case TRANS_HORIZONTAL:
-            //TODO: if input past threshold, use aft fan?
-
-            pitch_unit = (-input_axes.pitch + 1) / 2;
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, ELEVATOR_CHAN, pitch_unit));
-            break;
+    if (transition_state == TRANS_HORIZONTAL) {
+        //TODO: if input past threshold, use aft fan?
+        pitch_unit = (-input_axes.pitch + 1) / 2;
+        ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, ELEVATOR_CHAN, pitch_unit));
+    } else {
+        pitch_unit = reversable_esc_pitch_unit();
+        dshot_set_throttle(aft_dshot, pitch_unit);
     }
 }
 
@@ -177,21 +141,14 @@ static void update_yaw() {
     float yaw_unit = (input_axes.yaw + 1) / 2;
     float throttle_unit = (input_axes.throttle + 1) / 2;
 
-    switch (transition_state)
-    {
-        case TRANS_UNSET:
-            ESP_ERROR_CHECK(ESP_ERR_INVALID_ARG);
-        case TRANS_VERTICAL:
-        case TRANS_MID:
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, yaw_unit));
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, yaw_unit));
-            break;
-        case TRANS_HORIZONTAL:
-            dshot_set_throttle(lw_dshot, clampf(throttle_unit + MAX_YAW_THRUST_DIFFERENTIAL * input_axes.yaw, 0, 1));
-            dshot_set_throttle(rw_dshot, clampf(throttle_unit - MAX_YAW_THRUST_DIFFERENTIAL * input_axes.yaw, 0, 1));
+    if (transition_state == TRANS_HORIZONTAL) {
+        dshot_set_throttle(lw_dshot, clampf(throttle_unit + MAX_YAW_THRUST_DIFFERENTIAL * input_axes.yaw, 0, 1));
+        dshot_set_throttle(rw_dshot, clampf(throttle_unit - MAX_YAW_THRUST_DIFFERENTIAL * input_axes.yaw, 0, 1));
             
-            ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RUDDER_CHAN, yaw_unit));
-            break;
+        ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RUDDER_CHAN, yaw_unit));
+    } else {
+        ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, yaw_unit));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, yaw_unit));
     }
 }
 
@@ -209,19 +166,13 @@ static void update_input_axes() {
 #ifdef PANDION_GYRO_ENABLED
     bool armed = get_channel_duty(IBUS_RX_CHAN_ARM) > 0.5;
     if (!stabilization_armed && armed) {
-        pid_reset(roll_pid_handle);
-        pid_reset(pitch_pid_handle);
-        pid_reset(yaw_pid_handle);
+        // neutral_axis_stabilizer_reset();
+        positive_axis_stabilizer_reset();
     }
     stabilization_armed = armed;
     if (stabilization_armed) {
-        pid_update(roll_pid_handle, MAX_ROLL_RATE * input_axes.roll, gyro_values.norm_gyro_x);
-        pid_update(pitch_pid_handle, MAX_PITCH_RATE * input_axes.pitch, gyro_values.norm_gyro_y);
-        pid_update(yaw_pid_handle, MAX_YAW_RATE * input_axes.yaw, -gyro_values.norm_gyro_z);
-
-        input_axes.roll = clampf(roll_pid_handle->output, -1, 1);
-        input_axes.pitch = clampf(pitch_pid_handle->output, -1, 1);
-        input_axes.yaw = clampf(yaw_pid_handle->output, -1, 1);
+        // neutral_axis_stabilizer_update(transition_state, &input_axes, &gyro_values);
+        positive_axis_stabilizer_update(transition_state, &input_axes, &gyro_values);
     }
 #endif
 
@@ -280,7 +231,7 @@ esp_err_t flight_control_init() {
     ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
 
     transition_state = TRANS_UNSET;
-    current_trans_duty = 1.0;
+    current_trans_duty = 0.5;
     target_trans_duty = 1.0;
 
     ctrl_handle = ibus_control_init(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO);
@@ -303,29 +254,12 @@ esp_err_t flight_control_init() {
     rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
-    roll_pid_k = (axis_pid_constants_t){
-        .vertical = {0.002, 0.0005, 0.0025},
-        .horizontal = {0.002, 0.0005, 0.00}
-    };
-
-    pitch_pid_k = (axis_pid_constants_t){
-        .vertical = {0.04, 0.002, 0.0},
-        .horizontal = {0.04, 0.002, 0.0}
-    };
-
-    yaw_pid_k = (axis_pid_constants_t){
-        .vertical = {0.002, 0.0001, 0.0},
-        .horizontal = {0.002, 0.0005, 0.0025}
-    };
-
     roll_curve_handle = axis_curve_init(0.5);
     pitch_curve_handle = axis_curve_init(0.2);
     yaw_curve_handle = axis_curve_init(0.8);
 
-    roll_pid_handle = pid_init("x_axis", &roll_pid_k.vertical);
-    pitch_pid_handle = pid_init("y_axis", &pitch_pid_k.vertical);
-    yaw_pid_handle = pid_init("z_axis", &yaw_pid_k.vertical);
-
+    positive_axis_stabilizer_init();
+    neutral_axis_stabilizer_reset();
 
     timer_queue = init_timer();
 

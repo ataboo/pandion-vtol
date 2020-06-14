@@ -9,7 +9,7 @@ typedef struct {
     pid_constants_t* pid_constants;
 } pid_handle_impl;
 
-static const char* TAG = "AXIS_PID";
+// static const char* TAG = "AXIS_PID";
 
 pid_handle_t pid_init(const char* name, pid_constants_t* pid_constants) {
     pid_handle_impl* handle = (pid_handle_impl*)malloc(sizeof(pid_handle_impl));

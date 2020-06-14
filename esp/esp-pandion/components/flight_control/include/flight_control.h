@@ -11,6 +11,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "neutral_axis_stabilizer.h"
+#include "positive_axis_stabilizer.h"
+#include "flight_control_common.h"
 
 #define PANDION_GYRO_ENABLED
 
@@ -23,20 +26,6 @@ typedef enum {
     RUDDER_CHAN,
     SERVO_CHAN_COUNT
 } servo_ctrl_channel_t;
-
-typedef enum {
-    TRANS_VERTICAL,
-    TRANS_MID,
-    TRANS_HORIZONTAL,
-    TRANS_UNSET
-} transition_state_t;
-
-typedef struct {
-    float roll;
-    float pitch;
-    float yaw;
-    float throttle;
-} axis_duties_t;
 
 esp_err_t flight_control_init();
 

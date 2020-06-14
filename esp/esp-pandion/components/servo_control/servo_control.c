@@ -8,7 +8,7 @@
 #define SERVO_DUTY_RESOLUTION LEDC_TIMER_16_BIT
 #define SERVO_DUTY_MAX 65535
 
-static const char* TAG = "PANDION_SERVO_CONTROL";
+// static const char* TAG = "PANDION_SERVO_CONTROL";
 
 typedef struct {
     ledc_channel_t ledc_channel;

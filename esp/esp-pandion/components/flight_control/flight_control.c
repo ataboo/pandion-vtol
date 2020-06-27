@@ -166,13 +166,16 @@ static void update_input_axes() {
 #ifdef PANDION_GYRO_ENABLED
     bool armed = get_channel_duty(IBUS_RX_CHAN_ARM) > 0.5;
     if (!stabilization_armed && armed) {
-        // neutral_axis_stabilizer_reset();
+        neutral_axis_stabilizer_reset();
         positive_axis_stabilizer_reset();
     }
     stabilization_armed = armed;
     if (stabilization_armed) {
-        // neutral_axis_stabilizer_update(transition_state, &input_axes, &gyro_values);
-        positive_axis_stabilizer_update(transition_state, &input_axes, &gyro_values);
+        if (transition_state == TRANS_HORIZONTAL) {
+            neutral_axis_stabilizer_init(transition_state, &input_axes, &gyro_values);
+        } else if (transition_state == TRANS_VERTICAL || transition_state == TRANS_MID) {
+            positive_axis_stabilizer_update(transition_state, &input_axes, &gyro_values);
+        }
     }
 #endif
 

@@ -1,5 +1,7 @@
 #pragma once
 
+// #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include "axis_curve.h"
 #include "axis_pid.h"
 #include "gyro_control.h"

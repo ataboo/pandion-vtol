@@ -103,11 +103,14 @@ static void update_roll() {
     }
 
     if (transition_state == TRANS_HORIZONTAL) {
-        ESP_ERROR_CHECK_WITHOUT_ABORT(dshot_set_throttle(lw_dshot, clampf(throttle_unit + MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1)));
-        ESP_ERROR_CHECK_WITHOUT_ABORT(dshot_set_throttle(rw_dshot, clampf(throttle_unit - MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1)));
-    } else {
         ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, RWTILT_CHAN, 1-roll_unit));
         ESP_ERROR_CHECK_WITHOUT_ABORT(servo_ctrl_set_channel_duty(servo_handle, LWTILT_CHAN, 1-roll_unit));
+    } else {
+        float left_throttle = clampf(throttle_unit + MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1);
+        float right_throttle = clampf(throttle_unit - MAX_ROLL_THRUST_DIFFERENTIAL * input_axes.roll, 0, 1);
+
+        ESP_ERROR_CHECK_WITHOUT_ABORT(dshot_set_throttle(lw_dshot, left_throttle));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(dshot_set_throttle(rw_dshot, right_throttle));
     }
 }
 
@@ -245,8 +248,10 @@ esp_err_t flight_control_init() {
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
         { 1050, 2050, CONFIG_RWTILT_GPIO },
         { 1050, 2050, CONFIG_LWTILT_GPIO },
-        { 985, 2015, CONFIG_RWTRANS_GPIO },
-        { 985, 2015, CONFIG_LWTRANS_GPIO },
+        // Horiz -> Vert
+        { 940, 1950, CONFIG_RWTRANS_GPIO },
+        // Horiz -> Vert
+        { 950, 2000, CONFIG_LWTRANS_GPIO },
         { 920, 2080, CONFIG_ELEVATOR_GPIO },
         { 1000, 2000, CONFIG_RUDDER_GPIO }
     };
@@ -262,7 +267,7 @@ esp_err_t flight_control_init() {
     yaw_curve_handle = axis_curve_init(0.8);
 
     positive_axis_stabilizer_init();
-    neutral_axis_stabilizer_reset();
+    neutral_axis_stabilizer_init();
 
     timer_queue = init_timer();
 

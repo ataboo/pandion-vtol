@@ -38,7 +38,7 @@ void wifi_init_softap(void)
             .channel = CONFIG_WIFI_CHANNEL,
             .password = CONFIG_WIFI_AP_PASSWORD,
             .max_connection = CONFIG_WIFI_MAX_CONNECTIONS,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK,
         },
     };
     if (strlen(CONFIG_WIFI_AP_PASSWORD) == 0) {

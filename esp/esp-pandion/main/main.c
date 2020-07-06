@@ -28,4 +28,6 @@ void app_main()
 
     wifi_ap_init();
     tcp_server_init();
+
+    pandion_server_commands_init();
 }

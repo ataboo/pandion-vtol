@@ -1,7 +1,7 @@
 #include "tcp_server.h"
 
 typedef struct {
-    uint16_t command;
+    const char* verb;
     tcp_handler_t handler;
 } registered_handler_t;
 
@@ -11,12 +11,12 @@ static uint8_t tx_buffer[TCP_MAX_COMMAND_LENGTH];
 static tcp_command_packet_t rx_packet_buffer;
 static tcp_command_packet_t tx_packet_buffer;
 static registered_handler_t handlers[TCP_MAX_HANDLER_COUNT];
-static int handler_count;
+static int handler_count = 0;
 
 
 static esp_err_t send_command(int sock) {
-    tx_buffer[0] = tx_packet_buffer.command >> 8;
-    tx_buffer[1] = tx_packet_buffer.command & 0xFF;
+    tx_buffer[0] = 'p';
+    tx_buffer[1] = '|';
     for(int i=2; i<tx_packet_buffer.length; i++) {
         tx_buffer[i] = tx_packet_buffer.payload[i-2];
     }
@@ -29,26 +29,21 @@ static esp_err_t send_command(int sock) {
 }
 
 static esp_err_t handle_command(int sock) {
-    bool found_handler = false;
+
+    ESP_LOGI(TAG, "Handle count now: %d", handler_count);
 
     for(int i=0; i<handler_count; i++) {
-        if (handlers[i].command == rx_packet_buffer.command) {
-            tx_packet_buffer.command = 0;
+        ESP_LOGI(TAG, "Comparing: %s and %s", handlers[i].verb, rx_packet_buffer.verb);
+        if (strcmp(handlers[i].verb, rx_packet_buffer.verb) == 0) {
             handlers[i].handler(rx_packet_buffer, &tx_packet_buffer);
-            if (tx_packet_buffer.command > 0) {
-                send_command(sock);
-            }
             
-            found_handler = true;
+
+            return send_command(sock);
         }
     }
 
-    if (!found_handler) {
-        ESP_LOGW(TAG, "No handler found for command: %d", rx_packet_buffer.command);
-        return ESP_FAIL;
-    }
-    
-    return ESP_OK;
+    ESP_LOGW(TAG, "No handler found for command: `%s`", rx_packet_buffer.verb);
+    return ESP_FAIL;
 }
 
 static esp_err_t parse_command(int len, int sock) {
@@ -57,12 +52,71 @@ static esp_err_t parse_command(int len, int sock) {
         return ESP_FAIL;
     }
 
-    rx_packet_buffer.length = len;
-    rx_packet_buffer.command = rx_buffer[0] | rx_buffer[1] << 8;
-    
-    for (int i=2; i<len; i++) {
-        rx_packet_buffer.payload[i-2] = rx_buffer[i];
+    if (len > TCP_MAX_COMMAND_LENGTH) {
+        ESP_LOGE(TAG, "Packet of length %d is too long.", len);
+        return ESP_FAIL;
     }
+
+    rx_packet_buffer.length = len;
+
+    char verbBuffer[32];
+    rx_packet_buffer.verb = verbBuffer;
+
+    for(int i=0; i<len; i++) {
+        if (rx_buffer[i] == ' ') {
+            verbBuffer[i] = '\0';
+            rx_packet_buffer.verbLen = i+1;
+            break;
+        } else {
+            verbBuffer[i] = rx_buffer[i];
+
+            if (i == len-1) {
+                verbBuffer[i+1] = '\0';
+                rx_packet_buffer.verbLen = i+1;
+                break;
+            }
+        }
+    }
+
+    if (len > rx_packet_buffer.verbLen) {
+        char nounBuffer[32];
+        rx_packet_buffer.noun = nounBuffer;
+        for (int i=rx_packet_buffer.verbLen; i<len; i++) {
+            if (rx_buffer[i] == ' ') {
+                nounBuffer[i] = '\0';
+                rx_packet_buffer.nounLen = i+1 - rx_packet_buffer.verbLen;
+                break;
+            } else {
+                nounBuffer[i] = rx_buffer[i];
+
+                if (i == len-1) {
+                    nounBuffer[i+1] = '\0';
+                    rx_packet_buffer.nounLen = i+1 - rx_packet_buffer.verbLen;
+                    break;
+                }
+            }
+        }
+    } else {
+        rx_packet_buffer.noun = "";
+        rx_packet_buffer.nounLen = 0;
+    }
+
+    if (len > rx_packet_buffer.verbLen + rx_packet_buffer.nounLen) {
+        rx_packet_buffer.payloadLen = len - rx_packet_buffer.verbLen - rx_packet_buffer.nounLen;
+        for (int i=rx_packet_buffer.verbLen + rx_packet_buffer.nounLen; i<len; i++) {
+            rx_packet_buffer.payload[i] = rx_buffer[i];
+        }
+    } else {
+        rx_packet_buffer.payloadLen = 0;
+    }
+
+    ESP_LOGI(TAG, "Parsed verb: %s (%d), noun: %s (%d), payload: (%d)", 
+        rx_packet_buffer.verb, 
+        rx_packet_buffer.verbLen, 
+        rx_packet_buffer.noun, 
+        rx_packet_buffer.nounLen,
+        rx_packet_buffer.payloadLen
+    );
 
     handle_command(sock);
 
@@ -159,7 +213,7 @@ esp_err_t tcp_server_init() {
     return ESP_OK;
 }
 
-esp_err_t tcp_server_add_handler(uint16_t command, tcp_handler_t handler) {
+esp_err_t tcp_server_add_handler(const char* verb, tcp_handler_t handler) {
     if (handler_count == TCP_MAX_HANDLER_COUNT) {
         ESP_LOGE(TAG, "Max number of handlers reached.");
         return ESP_FAIL;
@@ -167,10 +221,12 @@ esp_err_t tcp_server_add_handler(uint16_t command, tcp_handler_t handler) {
 
     registered_handler_t new_handler = {
         .handler = handler,
-        .command = command
+        .verb = verb
     };
 
     handlers[handler_count++] = new_handler;
+
+    ESP_LOGI(TAG, "Handle count now: %d", handler_count);
 
     return ESP_OK;
 }

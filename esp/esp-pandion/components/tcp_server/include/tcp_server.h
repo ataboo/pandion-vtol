@@ -24,7 +24,11 @@
 
 typedef struct {
     int length;
-    uint16_t command;
+    int verbLen;
+    int nounLen;
+    int payloadLen;
+    const char* verb;
+    const char* noun;
     uint8_t payload[TCP_MAX_COMMAND_LENGTH-2];
 } tcp_command_packet_t;
 
@@ -32,4 +36,4 @@ typedef void (*tcp_handler_t)(tcp_command_packet_t incoming_command, tcp_command
 
 esp_err_t tcp_server_init();
 
-esp_err_t tcp_server_add_handler(uint16_t command, tcp_handler_t handler);
+esp_err_t tcp_server_add_handler(const char* command, tcp_handler_t handler);

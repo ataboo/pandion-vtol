@@ -35,6 +35,6 @@ esp_err_t flight_control_init();
 
 xQueueHandle init_timer();
 
-esp_err_t pandion_server_commands_init();
+esp_err_t pandion_server_commands_init(nvs_handle_t nvs_storage_handle);
 
 esp_err_t pid_control_init();

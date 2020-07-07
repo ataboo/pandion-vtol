@@ -5,7 +5,9 @@
 
 #define TCP_GET_COMMAND "get"
 #define TCP_SET_COMMAND "set"
+#define TCP_CLEAR_COMMAND "clear"
 #define TCP_RESET_COMMAND "reset"
+#define TCP_PING_COMMAND "ping"
 
 #define TCP_VAL_HORIZ_NEUTRAL_PID "hnpid"
 #define TCP_VAL_VERT_NEUTRAL_PID "vnpid"
@@ -23,43 +25,68 @@ static void handle_get_int32(tcp_command_packet_t packet_in, tcp_command_packet_
         ESP_LOGW(TAG, "Failed to get %s", packet_in.noun);
     }
 
-    packet_out->payload[0] = (int_val>>24) & 0xFF;
-    packet_out->payload[1] = (int_val>>16) & 0xFF;
-    packet_out->payload[2] = (int_val>>8) & 0xFF;
-    packet_out->payload[3] = int_val & 0xFF;
-    packet_out->length = 4;
+    sprintf(packet_out->payload, "%d", int_val);
+    packet_out->length = strlen(packet_out->payload);
 }
 
 static void handle_set_int32(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
-    if (packet_in.payloadLen != 4) {
-        ESP_LOGE(TAG, "Unnexpected tcp command packet length, %d", packet_in.payloadLen);
-    }
-    
+    int32_t int_val = atoi(packet_in.payload);
+
+    nvs_set_i32(storage_handle, packet_in.noun, int_val);
+    nvs_commit(storage_handle);
+
+    strcpy(packet_out->payload, "ack");
+    packet_out->payloadLen = 3;
+}
+
+static void handle_get_float(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
+    char float_buffer[32];
     int32_t int_val = 0;
 
-    int_val = packet_in.payload[0] | packet_in.payload[1] << 8 | packet_in.payload[2] << 16 | packet_in.payload[3] << 24;
+    ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_get_i32(storage_handle, packet_in.noun, &int_val));
     
-    nvs_set_i32(storage_handle, packet_in.noun, int_val);
+    float float_val = *(float*)&int_val;
+
+    sprintf(float_buffer, "%f", float_val);
+    int float_len = strlen(float_buffer);
+    for(int i=0; i<float_len; i++) {
+        packet_out->payload[i] = float_buffer[i];
+    }
+
+    packet_out->payloadLen = float_len;
+}
+
+static void handle_set_float(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
+    float_t float_val = atof(packet_in.payload);
+    int32_t int_val = *(int32_t*)&float_val;
+
+    ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_set_i32(storage_handle, packet_in.noun, int_val));
+    nvs_commit(storage_handle);
+
+    strcpy(packet_out->payload, "ack");
+    packet_out->payloadLen = 4;
 }
 
 static void handle_reset(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
     //TODO;
 }
 
-static void register_pandion_server_commands() {
-    tcp_server_add_handler(TCP_GET_COMMAND, handle_get_int32);
-    tcp_server_add_handler(TCP_SET_COMMAND, handle_set_int32);
-    tcp_server_add_handler(TCP_RESET_COMMAND, handle_reset);
+static void handle_ping(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
+    strcpy(packet_out->payload, "pong");
+    packet_out->payloadLen = 5;
 }
 
-esp_err_t pandion_server_commands_init() {
-    esp_err_t err = nvs_open("storage", NVS_READWRITE, &storage_handle);
-    if (err != ESP_OK) {
-        return err;
-    }
+static void register_pandion_server_commands() {
+    tcp_server_add_handler(TCP_GET_COMMAND, handle_get_float);
+    tcp_server_add_handler(TCP_SET_COMMAND, handle_set_float);
+    tcp_server_add_handler(TCP_RESET_COMMAND, handle_reset);
+    tcp_server_add_handler(TCP_PING_COMMAND, handle_ping);
+}
+
+esp_err_t pandion_server_commands_init(nvs_handle_t nvs_handle) {
+    storage_handle = nvs_handle;
 
     register_pandion_server_commands();
 
     return ESP_OK;
 }
-

@@ -24,10 +24,8 @@ void app_main()
     // esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("*", ESP_LOG_DEBUG);
 
-    // flight_control_init();
+    flight_control_init();
 
     wifi_ap_init();
     tcp_server_init();
-
-    pandion_server_commands_init();
 }

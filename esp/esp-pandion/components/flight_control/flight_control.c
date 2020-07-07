@@ -16,6 +16,8 @@ typedef struct {
 
 static const char* TAG = "FLIGHT_CONTROL";
 
+static nvs_handle_t nvs_storage_handle;
+
 static axis_curve_handle_t roll_curve_handle;
 static axis_curve_handle_t pitch_curve_handle;
 static axis_curve_handle_t yaw_curve_handle;
@@ -225,6 +227,21 @@ static void loop_task(void *arg) {
     vTaskDelete(NULL);
 }
 
+static int32_t get_nvs_val_int(const char* key, int32_t defaultVal) {
+    nvs_get_i32(nvs_storage_handle, key, &defaultVal);
+
+    return defaultVal;
+}
+
+static float get_nvs_val_float(const char* key, float defaultVal) {
+    int32_t int_val;
+    if (nvs_get_i32(nvs_storage_handle, key, &int_val) == ESP_OK) {
+        defaultVal = *(float*)&int_val;
+    }
+
+    return defaultVal;
+}
+
 esp_err_t flight_control_init() {
 #ifdef PANDION_GYRO_ENABLED
     esp_err_t ret = gyro_control_init();
@@ -234,6 +251,10 @@ esp_err_t flight_control_init() {
     }
 #endif
 
+    ESP_ERROR_CHECK(nvs_open("storage", NVS_READWRITE, &nvs_storage_handle));
+
+    pandion_server_commands_init(nvs_storage_handle);
+    
     ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
 
     transition_state = TRANS_UNSET;
@@ -246,14 +267,14 @@ esp_err_t flight_control_init() {
     ibus_push_sensor(sensor_handle, &extv_sensor);
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
-        { 1050, 2050, CONFIG_RWTILT_GPIO },
-        { 1050, 2050, CONFIG_LWTILT_GPIO },
+        { get_nvs_val_int("duty_rwtilt_l", 1050), get_nvs_val_int("duty_rwtilt_h", 2050), CONFIG_RWTILT_GPIO },
+        { get_nvs_val_int("duty_lwtilt_l", 1050), get_nvs_val_int("duty_lwtilt_h", 2050), CONFIG_LWTILT_GPIO },
         // Horiz -> Vert
-        { 940, 1950, CONFIG_RWTRANS_GPIO },
+        { get_nvs_val_int("duty_rwtrans_l", 940), get_nvs_val_int("duty_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
         // Horiz -> Vert
-        { 950, 2000, CONFIG_LWTRANS_GPIO },
-        { 920, 2080, CONFIG_ELEVATOR_GPIO },
-        { 1000, 2000, CONFIG_RUDDER_GPIO }
+        { get_nvs_val_int("duty_lwtrans_l", 950), get_nvs_val_int("duty_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
+        { get_nvs_val_int("duty_elev_l", 920), get_nvs_val_int("duty_elev_h", 2080), CONFIG_ELEVATOR_GPIO },
+        { get_nvs_val_int("duty_rud_l", 1000), get_nvs_val_int("duty_rud_h", 2000), CONFIG_RUDDER_GPIO }
     };
 
     servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);

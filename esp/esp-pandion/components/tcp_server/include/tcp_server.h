@@ -27,9 +27,9 @@ typedef struct {
     int verbLen;
     int nounLen;
     int payloadLen;
-    const char* verb;
-    const char* noun;
-    uint8_t payload[TCP_MAX_COMMAND_LENGTH-2];
+    char verb[16];
+    char noun[16];
+    char payload[32];
 } tcp_command_packet_t;
 
 typedef void (*tcp_handler_t)(tcp_command_packet_t incoming_command, tcp_command_packet_t* outgoing_command);

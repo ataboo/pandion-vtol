@@ -15,29 +15,24 @@ static int handler_count = 0;
 
 
 static esp_err_t send_command(int sock) {
-    tx_buffer[0] = 'p';
-    tx_buffer[1] = '|';
-    for(int i=2; i<tx_packet_buffer.length; i++) {
-        tx_buffer[i] = tx_packet_buffer.payload[i-2];
+    if (tx_packet_buffer.payloadLen == 0) {
+        tx_packet_buffer.payloadLen = 4;
+        strcpy(tx_packet_buffer.payload, "ack");
     }
 
-    send(sock, &tx_buffer, tx_packet_buffer.length, 0);
+    tx_packet_buffer.length = tx_packet_buffer.payloadLen;
+    
+    memcpy(tx_buffer, tx_packet_buffer.payload, tx_packet_buffer.payloadLen);
 
-    ESP_LOGI(TAG, "Sent command");
+    send(sock, &tx_buffer, tx_packet_buffer.length, 0);
 
     return ESP_OK;
 }
 
 static esp_err_t handle_command(int sock) {
-
-    ESP_LOGI(TAG, "Handle count now: %d", handler_count);
-
     for(int i=0; i<handler_count; i++) {
-        ESP_LOGI(TAG, "Comparing: %s and %s", handlers[i].verb, rx_packet_buffer.verb);
         if (strcmp(handlers[i].verb, rx_packet_buffer.verb) == 0) {
             handlers[i].handler(rx_packet_buffer, &tx_packet_buffer);
-            
-
             return send_command(sock);
         }
     }
@@ -59,62 +54,36 @@ static esp_err_t parse_command(int len, int sock) {
 
     rx_packet_buffer.length = len;
 
-    char verbBuffer[32];
-    rx_packet_buffer.verb = verbBuffer;
+    char* token = strtok((char*)rx_buffer, " ");
 
-    for(int i=0; i<len; i++) {
-        if (rx_buffer[i] == ' ') {
-            verbBuffer[i] = '\0';
-            rx_packet_buffer.verbLen = i+1;
-            break;
-        } else {
-            verbBuffer[i] = rx_buffer[i];
+    strcpy(rx_packet_buffer.verb, token);
+    rx_packet_buffer.verbLen = strlen(rx_packet_buffer.verb);
 
-            if (i == len-1) {
-                verbBuffer[i+1] = '\0';
-                rx_packet_buffer.verbLen = i+1;
-                break;
-            }
-        }
-    }
-
-    if (len > rx_packet_buffer.verbLen) {
-        char nounBuffer[32];
-        rx_packet_buffer.noun = nounBuffer;
-        for (int i=rx_packet_buffer.verbLen; i<len; i++) {
-            if (rx_buffer[i] == ' ') {
-                nounBuffer[i] = '\0';
-                rx_packet_buffer.nounLen = i+1 - rx_packet_buffer.verbLen;
-                break;
-            } else {
-                nounBuffer[i] = rx_buffer[i];
-
-                if (i == len-1) {
-                    nounBuffer[i+1] = '\0';
-                    rx_packet_buffer.nounLen = i+1 - rx_packet_buffer.verbLen;
-                    break;
-                }
-            }
-        }
+    token = strtok(NULL, " ");
+    if (token != NULL) {
+        rx_packet_buffer.nounLen = strlen(token);
+        strcpy(rx_packet_buffer.noun, token);
     } else {
-        rx_packet_buffer.noun = "";
         rx_packet_buffer.nounLen = 0;
     }
 
-    if (len > rx_packet_buffer.verbLen + rx_packet_buffer.nounLen) {
-        rx_packet_buffer.payloadLen = len - rx_packet_buffer.verbLen - rx_packet_buffer.nounLen;
-        for (int i=rx_packet_buffer.verbLen + rx_packet_buffer.nounLen; i<len; i++) {
-            rx_packet_buffer.payload[i] = rx_buffer[i];
+    if (rx_packet_buffer.nounLen > 0) {
+        token = strtok(NULL, " ");
+
+        if (token != NULL) {
+            rx_packet_buffer.payloadLen = strlen(token);
+            strcpy(rx_packet_buffer.payload, token);
+        } else {
+            rx_packet_buffer.payloadLen = 0;
         }
-    } else {
-        rx_packet_buffer.payloadLen = 0;
     }
 
-    ESP_LOGI(TAG, "Parsed verb: %s (%d), noun: %s (%d), payload: (%d)", 
+    ESP_LOGD(TAG, "Parsed verb: %s (%d), noun: %s (%d), payload: %s (%d)", 
         rx_packet_buffer.verb, 
         rx_packet_buffer.verbLen, 
         rx_packet_buffer.noun, 
         rx_packet_buffer.nounLen,
+        rx_packet_buffer.payload,
         rx_packet_buffer.payloadLen
     );
 
@@ -133,8 +102,7 @@ static esp_err_t read_command(int sock) {
         } else if (len == 0) {
             ESP_LOGW(TAG, "Connection closed");
         } else {
-            rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
-            ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+            rx_buffer[len] = 0;
 
             parse_command(len, sock);
         }
@@ -208,6 +176,9 @@ static void tcp_server_task()
 }
 
 esp_err_t tcp_server_init() {
+    rx_packet_buffer = (tcp_command_packet_t){ };
+    tx_packet_buffer = (tcp_command_packet_t){ };
+
     xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, NULL);
 
     return ESP_OK;
@@ -225,8 +196,6 @@ esp_err_t tcp_server_add_handler(const char* verb, tcp_handler_t handler) {
     };
 
     handlers[handler_count++] = new_handler;
-
-    ESP_LOGI(TAG, "Handle count now: %d", handler_count);
 
     return ESP_OK;
 }

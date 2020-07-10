@@ -227,22 +227,9 @@ static void loop_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-static int32_t get_nvs_val_int(const char* key, int32_t defaultVal) {
-    nvs_get_i32(nvs_storage_handle, key, &defaultVal);
-
-    return defaultVal;
-}
-
-static float get_nvs_val_float(const char* key, float defaultVal) {
-    int32_t int_val;
-    if (nvs_get_i32(nvs_storage_handle, key, &int_val) == ESP_OK) {
-        defaultVal = *(float*)&int_val;
-    }
-
-    return defaultVal;
-}
-
 esp_err_t flight_control_init() {
+    config_db_init("pandion_storage");
+
 #ifdef PANDION_GYRO_ENABLED
     esp_err_t ret = gyro_control_init();
     if (ret != ESP_OK) {
@@ -251,9 +238,7 @@ esp_err_t flight_control_init() {
     }
 #endif
 
-    ESP_ERROR_CHECK(nvs_open("storage", NVS_READWRITE, &nvs_storage_handle));
-
-    pandion_server_commands_init(nvs_storage_handle);
+    pandion_server_commands_init();
     
     ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
 
@@ -267,14 +252,15 @@ esp_err_t flight_control_init() {
     ibus_push_sensor(sensor_handle, &extv_sensor);
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
-        { get_nvs_val_int("duty_rwtilt_l", 1050), get_nvs_val_int("duty_rwtilt_h", 2050), CONFIG_RWTILT_GPIO },
-        { get_nvs_val_int("duty_lwtilt_l", 1050), get_nvs_val_int("duty_lwtilt_h", 2050), CONFIG_LWTILT_GPIO },
-        // Horiz -> Vert
-        { get_nvs_val_int("duty_rwtrans_l", 940), get_nvs_val_int("duty_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
-        // Horiz -> Vert
-        { get_nvs_val_int("duty_lwtrans_l", 950), get_nvs_val_int("duty_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
-        { get_nvs_val_int("duty_elev_l", 920), get_nvs_val_int("duty_elev_h", 2080), CONFIG_ELEVATOR_GPIO },
-        { get_nvs_val_int("duty_rud_l", 1000), get_nvs_val_int("duty_rud_h", 2000), CONFIG_RUDDER_GPIO }
+        { config_db_get_int_def("duty_rwtilt_l", 1050), config_db_get_int_def("duty_rwtilt_h", 2050), CONFIG_RWTILT_GPIO },
+        { config_db_get_int_def("duty_lwtilt_l", 1050), config_db_get_int_def("duty_lwtilt_h", 2050), CONFIG_LWTILT_GPIO },
+        
+        // Horiz ~1000 -> Vert ~2000
+        { config_db_get_int_def("duty_rwtrans_l", 940), config_db_get_int_def("duty_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
+        { config_db_get_int_def("duty_lwtrans_l", 950), config_db_get_int_def("duty_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
+
+        { config_db_get_int_def("duty_elev_l", 920), config_db_get_int_def("duty_elev_h", 2080), CONFIG_ELEVATOR_GPIO },
+        { config_db_get_int_def("duty_rud_l", 1000), config_db_get_int_def("duty_rud_h", 2000), CONFIG_RUDDER_GPIO }
     };
 
     servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
@@ -283,9 +269,9 @@ esp_err_t flight_control_init() {
     rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
-    roll_curve_handle = axis_curve_init(0.5);
-    pitch_curve_handle = axis_curve_init(0.2);
-    yaw_curve_handle = axis_curve_init(0.8);
+    roll_curve_handle = axis_curve_init(config_db_get_float_def("roll_axis_curve", 0.5));
+    pitch_curve_handle = axis_curve_init(config_db_get_float_def("pitch_axis_curve", 0.2));
+    yaw_curve_handle = axis_curve_init(config_db_get_float_def("yaw_axis_curve", 0.8));
 
     positive_axis_stabilizer_init();
     neutral_axis_stabilizer_init();

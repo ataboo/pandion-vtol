@@ -16,10 +16,10 @@ esp_err_t positive_axis_stabilizer_init() {
     if (stabilizer_initialized) {
         return ESP_FAIL;
     }
-    
-    pid_constants_t roll_v_k = {0.002, 0.0005, 0.0025};
-    pid_constants_t pitch_v_k = {0.04, 0.002, 0.0};
-    pid_constants_t yaw_v_k = {0.002, 0.0001, 0.0};
+
+    pid_constants_t roll_v_k = { config_db_get_float_def("pg_roll_vp", 0.002), config_db_get_float_def("pg_roll_vi", 0.0005), config_db_get_float_def("pg_roll_vd", 0.0025) };
+    pid_constants_t pitch_v_k = { config_db_get_float_def("pg_pitch_vp", 0.04), config_db_get_float_def("pg_pitch_vi", 0.002), config_db_get_float_def("pg_pitch_vd", 0.0) };
+    pid_constants_t yaw_v_k = { config_db_get_float_def("pg_yaw_vp", 0.002), config_db_get_float_def("pg_yaw_vi", 0.0001), config_db_get_float_def("pg_yaw_vd", 0.0) };
 
     roll_pid_v = pid_init("x_axis", &roll_v_k);
     pitch_pid_v = pid_init("y_axis", &pitch_v_k);

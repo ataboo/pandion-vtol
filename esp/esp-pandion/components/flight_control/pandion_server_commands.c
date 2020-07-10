@@ -9,13 +9,6 @@
 #define TCP_RESET_COMMAND "reset"
 #define TCP_PING_COMMAND "ping"
 
-#define TCP_VAL_HORIZ_NEUTRAL_PID "hnpid"
-#define TCP_VAL_VERT_NEUTRAL_PID "vnpid"
-
-#define TCP_VAL_HORIZ_POSITIVE_PID "hppid"
-#define TCP_VAL_VERT_POSITIVE_PID "vppid"
-
-
 static const char* TAG = "PANDION_SERVER_COMMANDS";
 static nvs_handle_t storage_handle;
 
@@ -68,7 +61,9 @@ static void handle_set_float(tcp_command_packet_t packet_in, tcp_command_packet_
 }
 
 static void handle_reset(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
-    //TODO;
+    ESP_LOGI(TAG, "Restarting now.\n");
+    fflush(stdout);
+    esp_restart();
 }
 
 static void handle_ping(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
@@ -83,9 +78,7 @@ static void register_pandion_server_commands() {
     tcp_server_add_handler(TCP_PING_COMMAND, handle_ping);
 }
 
-esp_err_t pandion_server_commands_init(nvs_handle_t nvs_handle) {
-    storage_handle = nvs_handle;
-
+esp_err_t pandion_server_commands_init() {
     register_pandion_server_commands();
 
     return ESP_OK;

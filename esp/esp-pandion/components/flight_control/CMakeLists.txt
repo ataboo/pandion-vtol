@@ -11,5 +11,5 @@ idf_component_register(SRCS "flight_control.c" "timer.c" "pandion_server_command
                                 neutral_axis_stabilizer 
                                 flight_control_common 
                                 positive_axis_stabilizer 
-                                nvs_flash 
-                                tcp_server)
+                                tcp_server
+                                config_db)

@@ -16,8 +16,8 @@
 #include "neutral_axis_stabilizer.h"
 #include "positive_axis_stabilizer.h"
 #include "flight_control_common.h"
-#include "nvs.h"
 #include "tcp_server.h"
+#include "config_db.h"
 
 #define PANDION_GYRO_ENABLED
 
@@ -35,6 +35,6 @@ esp_err_t flight_control_init();
 
 xQueueHandle init_timer();
 
-esp_err_t pandion_server_commands_init(nvs_handle_t nvs_storage_handle);
+esp_err_t pandion_server_commands_init();
 
 esp_err_t pid_control_init();

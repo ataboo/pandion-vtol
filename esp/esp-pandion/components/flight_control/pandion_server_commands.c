@@ -3,8 +3,10 @@
 // `get hnpid_p\n` - Get the 'p' gain for horizontal neutral PID. 
 // `set vppid_i 0.123\n` - Set the 'i' gain for the vertical positive PID.
 
-#define TCP_GET_COMMAND "get"
-#define TCP_SET_COMMAND "set"
+#define TCP_GETI_COMMAND "geti"
+#define TCP_SETI_COMMAND "seti"
+#define TCP_GETF_COMMAND "getf"
+#define TCP_SETF_COMMAND "setf"
 #define TCP_CLEAR_COMMAND "clear"
 #define TCP_RESET_COMMAND "reset"
 #define TCP_PING_COMMAND "ping"
@@ -13,21 +15,17 @@ static const char* TAG = "PANDION_SERVER_COMMANDS";
 static nvs_handle_t storage_handle;
 
 static void handle_get_int32(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
-    int32_t int_val = 0;
-    if (nvs_get_i32(storage_handle, packet_in.noun, &int_val) != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to get %s", packet_in.noun);
-    }
+    int32_t int_val = config_db_get_int_def(packet_in.noun, 0);
+
+    ESP_LOGI(TAG, "got in: %d", int_val);
 
     sprintf(packet_out->payload, "%d", int_val);
-    packet_out->length = strlen(packet_out->payload);
+    packet_out->payloadLen = strlen(packet_out->payload);
 }
 
 static void handle_set_int32(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
     int32_t int_val = atoi(packet_in.payload);
-
-    nvs_set_i32(storage_handle, packet_in.noun, int_val);
-    nvs_commit(storage_handle);
-
+    config_db_set_int(packet_in.noun, int_val);
     strcpy(packet_out->payload, "ack");
     packet_out->payloadLen = 3;
 }
@@ -36,9 +34,7 @@ static void handle_get_float(tcp_command_packet_t packet_in, tcp_command_packet_
     char float_buffer[32];
     int32_t int_val = 0;
 
-    ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_get_i32(storage_handle, packet_in.noun, &int_val));
-    
-    float float_val = *(float*)&int_val;
+    float float_val = config_db_get_float_def(packet_in.noun, 0);
 
     sprintf(float_buffer, "%f", float_val);
     int float_len = strlen(float_buffer);
@@ -51,10 +47,8 @@ static void handle_get_float(tcp_command_packet_t packet_in, tcp_command_packet_
 
 static void handle_set_float(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
     float_t float_val = atof(packet_in.payload);
-    int32_t int_val = *(int32_t*)&float_val;
-
-    ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_set_i32(storage_handle, packet_in.noun, int_val));
-    nvs_commit(storage_handle);
+    
+    ESP_ERROR_CHECK_WITHOUT_ABORT(config_db_set_float(packet_in.noun, float_val));
 
     strcpy(packet_out->payload, "ack");
     packet_out->payloadLen = 4;
@@ -72,8 +66,10 @@ static void handle_ping(tcp_command_packet_t packet_in, tcp_command_packet_t* pa
 }
 
 static void register_pandion_server_commands() {
-    tcp_server_add_handler(TCP_GET_COMMAND, handle_get_float);
-    tcp_server_add_handler(TCP_SET_COMMAND, handle_set_float);
+    tcp_server_add_handler(TCP_GETI_COMMAND, handle_get_int32);
+    tcp_server_add_handler(TCP_SETI_COMMAND, handle_set_int32);
+    tcp_server_add_handler(TCP_GETF_COMMAND, handle_get_float);
+    tcp_server_add_handler(TCP_SETF_COMMAND, handle_set_float);
     tcp_server_add_handler(TCP_RESET_COMMAND, handle_reset);
     tcp_server_add_handler(TCP_PING_COMMAND, handle_ping);
 }

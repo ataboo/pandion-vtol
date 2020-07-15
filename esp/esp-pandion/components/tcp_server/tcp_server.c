@@ -29,16 +29,22 @@ static esp_err_t send_command(int sock) {
     return ESP_OK;
 }
 
+static void handle_invalid_command(tcp_command_packet_t packet_in, tcp_command_packet_t* packet_out) {
+    strcpy(packet_out->payload, "command not found");
+    packet_out->payloadLen = strlen(packet_out->payload);
+}
+
 static esp_err_t handle_command(int sock) {
+    tcp_handler_t cmd_handler = handle_invalid_command;
+
     for(int i=0; i<handler_count; i++) {
         if (strcmp(handlers[i].verb, rx_packet_buffer.verb) == 0) {
-            handlers[i].handler(rx_packet_buffer, &tx_packet_buffer);
-            return send_command(sock);
+            cmd_handler = handlers[i].handler;
         }
     }
 
-    ESP_LOGW(TAG, "No handler found for command: `%s`", rx_packet_buffer.verb);
-    return ESP_FAIL;
+    cmd_handler(rx_packet_buffer, &tx_packet_buffer);
+    return send_command(sock);
 }
 
 static esp_err_t parse_command(int len, int sock) {

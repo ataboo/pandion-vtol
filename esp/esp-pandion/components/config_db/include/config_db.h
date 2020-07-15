@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "nvs.h"
+#include "nvs_flash.h"
 
 esp_err_t config_db_init(const char* dbName);
 

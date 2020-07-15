@@ -16,8 +16,6 @@ typedef struct {
 
 static const char* TAG = "FLIGHT_CONTROL";
 
-static nvs_handle_t nvs_storage_handle;
-
 static axis_curve_handle_t roll_curve_handle;
 static axis_curve_handle_t pitch_curve_handle;
 static axis_curve_handle_t yaw_curve_handle;
@@ -228,57 +226,57 @@ static void loop_task(void *arg) {
 }
 
 esp_err_t flight_control_init() {
-    config_db_init("pandion_storage");
+//     ESP_ERROR_CHECK(config_db_init("pandion_storage"));
 
-#ifdef PANDION_GYRO_ENABLED
-    esp_err_t ret = gyro_control_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to init gyro %02x", ret);
-        return ret; 
-    }
-#endif
+// #ifdef PANDION_GYRO_ENABLED
+//     esp_err_t ret = gyro_control_init();
+//     if (ret != ESP_OK) {
+//         ESP_LOGE(TAG, "Failed to init gyro %02x", ret);
+//         return ret; 
+//     }
+// #endif
 
-    pandion_server_commands_init();
+//     pandion_server_commands_init();
     
-    ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
+//     ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
 
-    transition_state = TRANS_UNSET;
-    current_trans_duty = 0.5;
-    target_trans_duty = 1.0;
+//     transition_state = TRANS_UNSET;
+//     current_trans_duty = 0.5;
+//     target_trans_duty = 1.0;
 
-    ctrl_handle = ibus_control_init(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO);
-    sensor_handle = ibus_sensor_init(CONFIG_IBUS_SENSOR_UART_NUM, CONFIG_IBUS_SENSOR_RX_GPIO, CONFIG_IBUS_SENSOR_TX_GPIO);
-    extv_sensor = ibus_create_sensor(IBUS_TYPE_EXTV, 0);
-    ibus_push_sensor(sensor_handle, &extv_sensor);
+//     ctrl_handle = ibus_control_init(CONFIG_IBUS_CTRL_UART_NUM, CONFIG_IBUS_CTRL_GPIO);
+//     sensor_handle = ibus_sensor_init(CONFIG_IBUS_SENSOR_UART_NUM, CONFIG_IBUS_SENSOR_RX_GPIO, CONFIG_IBUS_SENSOR_TX_GPIO);
+//     extv_sensor = ibus_create_sensor(IBUS_TYPE_EXTV, 0);
+//     ibus_push_sensor(sensor_handle, &extv_sensor);
 
-    servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
-        { config_db_get_int_def("duty_rwtilt_l", 1050), config_db_get_int_def("duty_rwtilt_h", 2050), CONFIG_RWTILT_GPIO },
-        { config_db_get_int_def("duty_lwtilt_l", 1050), config_db_get_int_def("duty_lwtilt_h", 2050), CONFIG_LWTILT_GPIO },
+//     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
+//         { config_db_get_int_def("p_rwtilt_l", 1050), config_db_get_int_def("p_rwtilt_h", 2050), CONFIG_RWTILT_GPIO },
+//         { config_db_get_int_def("p_lwtilt_l", 1050), config_db_get_int_def("p_lwtilt_h", 2050), CONFIG_LWTILT_GPIO },
         
-        // Horiz ~1000 -> Vert ~2000
-        { config_db_get_int_def("duty_rwtrans_l", 940), config_db_get_int_def("duty_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
-        { config_db_get_int_def("duty_lwtrans_l", 950), config_db_get_int_def("duty_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
+//         // Horiz ~1000 -> Vert ~2000
+//         { config_db_get_int_def("p_rwtrans_l", 940), config_db_get_int_def("p_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
+//         { config_db_get_int_def("p_lwtrans_l", 950), config_db_get_int_def("p_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
 
-        { config_db_get_int_def("duty_elev_l", 920), config_db_get_int_def("duty_elev_h", 2080), CONFIG_ELEVATOR_GPIO },
-        { config_db_get_int_def("duty_rud_l", 1000), config_db_get_int_def("duty_rud_h", 2000), CONFIG_RUDDER_GPIO }
-    };
+//         { config_db_get_int_def("p_elev_l", 920), config_db_get_int_def("p_elev_h", 2080), CONFIG_ELEVATOR_GPIO },
+//         { config_db_get_int_def("p_rud_l", 1000), config_db_get_int_def("p_rud_h", 2000), CONFIG_RUDDER_GPIO }
+//     };
 
-    servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
+//     servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
 
-    lw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_LWPROP_GPIO, .rmt_chan = 0, .name = "Left" });
-    rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
-    aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
+//     lw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_LWPROP_GPIO, .rmt_chan = 0, .name = "Left" });
+//     rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
+//     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
-    roll_curve_handle = axis_curve_init(config_db_get_float_def("roll_axis_curve", 0.5));
-    pitch_curve_handle = axis_curve_init(config_db_get_float_def("pitch_axis_curve", 0.2));
-    yaw_curve_handle = axis_curve_init(config_db_get_float_def("yaw_axis_curve", 0.8));
+//     roll_curve_handle = axis_curve_init(config_db_get_float_def("roll_curve", 0.5));
+//     pitch_curve_handle = axis_curve_init(config_db_get_float_def("pitch_curve", 0.2));
+//     yaw_curve_handle = axis_curve_init(config_db_get_float_def("yaw_curve", 0.8));
 
-    positive_axis_stabilizer_init();
-    neutral_axis_stabilizer_init();
+//     positive_axis_stabilizer_init();
+//     neutral_axis_stabilizer_init();
 
     timer_queue = init_timer();
 
-    xTaskCreate(loop_task, "loop_task", 2048, NULL, 5, NULL);
+    // xTaskCreate(loop_task, "loop_task", 2048, NULL, 5, NULL);
 
     return ESP_OK;
 }

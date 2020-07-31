@@ -5,6 +5,8 @@
 #include <math.h>
 
 
+// #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #define PI 3.1415926535897932384626433832795
 #define HALF_PI 1.5707963267948966192313216916398
 #define TWO_PI 6.283185307179586476925286766559
@@ -14,7 +16,7 @@
 #define GYRO_I2C_NUM I2C_NUM_0
 
 #define GYRO_READ_BUFFER_LEN            16
-#define GYRO_ERROR_SAMPLE_COUNT         500
+#define GYRO_ERROR_SAMPLE_COUNT         1000
 
 #define MPU6050_RA_WHO_AM_I             0x75
 #define MPU6050_RA_PWR_MGMT_1           0x6B
@@ -68,8 +70,8 @@ typedef struct {
     float norm_accel_x;
     float norm_accel_y;
     float norm_accel_z;
-    float accel_x_component;
-    float accel_y_component;
+    float accel_x_rads;
+    float accel_y_rads;
 
     float roll_rads;
     float pitch_rads;

@@ -157,7 +157,7 @@ static void update_yaw() {
 
 static void update_input_axes() {
     input_axes.roll = get_channel_duty(IBUS_RX_CHAN_ROLL);
-    input_axes.pitch = get_channel_duty(IBUS_RX_CHAN_PITCH);
+    input_axes.pitch = -get_channel_duty(IBUS_RX_CHAN_PITCH);
     input_axes.yaw = get_channel_duty(IBUS_RX_CHAN_RUDDER);
     
     input_axes.throttle = get_channel_duty(IBUS_RX_CHAN_THROTTLE);
@@ -182,9 +182,9 @@ static void update_input_axes() {
     }
 #endif
 
-    input_axes.roll = axis_curve_calculate(roll_curve_handle, input_axes.roll);
-    input_axes.pitch = axis_curve_calculate(pitch_curve_handle, input_axes.pitch);
-    input_axes.yaw = axis_curve_calculate(yaw_curve_handle, input_axes.yaw);
+    // input_axes.roll = axis_curve_calculate(roll_curve_handle, input_axes.roll);
+    // input_axes.pitch = axis_curve_calculate(pitch_curve_handle, input_axes.pitch);
+    // input_axes.yaw = axis_curve_calculate(yaw_curve_handle, input_axes.yaw);
 
     ESP_LOGD(TAG, "Roll %f, Pitch %f, Yaw %f, Throttle %f", input_axes.roll, input_axes.pitch, input_axes.yaw, input_axes.throttle);
 }
@@ -255,6 +255,8 @@ esp_err_t flight_control_init() {
         
         // Horiz ~1000 -> Vert ~2000
         { config_db_get_int_def("p_rwtrans_l", 940), config_db_get_int_def("p_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
+
+        // Vert 1000 -> Horiz 2000
         { config_db_get_int_def("p_lwtrans_l", 950), config_db_get_int_def("p_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
 
         { config_db_get_int_def("p_elev_l", 920), config_db_get_int_def("p_elev_h", 2080), CONFIG_ELEVATOR_GPIO },

@@ -169,7 +169,7 @@ static esp_err_t read_gyro_values(gyro_values_t* values, bool apply_error) {
     ret |= read_bytes(MPU6050_RA_GYRO_XOUT, 6, io_buffer);
     values->norm_gyro_x = (int16_t)(io_buffer[0]<<8 | io_buffer[1]);
     values->norm_gyro_y = (int16_t)(io_buffer[2]<<8 | io_buffer[3]);
-    values->norm_gyro_z = (int16_t)(io_buffer[4]<<8 | io_buffer[5]);
+    values->norm_gyro_z = -(int16_t)(io_buffer[4]<<8 | io_buffer[5]);
 
     values->norm_accel_x /=  MPU6050_ACCEL_LSB;
     values->norm_accel_y /=  MPU6050_ACCEL_LSB;
@@ -178,12 +178,12 @@ static esp_err_t read_gyro_values(gyro_values_t* values, bool apply_error) {
     values->norm_gyro_y /= MPU6050_GYRO_LSB;
     values->norm_gyro_z /= MPU6050_GYRO_LSB;
 
-    values->accel_x_component = ((atan((values->norm_accel_y) / sqrt(pow((values->norm_accel_x), 2) + pow((values->norm_accel_z), 2))) * RAD_TO_DEG));
-    values->accel_y_component = ((atan(-1 * (values->norm_accel_x) / sqrt(pow((values->norm_accel_y), 2) + pow((values->norm_accel_z), 2))) * RAD_TO_DEG));
+    values->accel_x_rads = atan((values->norm_accel_y) / sqrt(pow((values->norm_accel_x), 2) + pow((values->norm_accel_z), 2)));
+    values->accel_y_rads = atan((values->norm_accel_x) / sqrt(pow((values->norm_accel_y), 2) + pow((values->norm_accel_z), 2)));
 
     if (apply_error) {
-        values->accel_x_component -= state->error->accel_err_x;
-        values->accel_y_component -= state->error->accel_err_y;
+        values->accel_x_rads -= state->error->accel_err_x;
+        values->accel_y_rads -= state->error->accel_err_y;
 
         values->norm_gyro_x -= state->error->gyro_err_x;
         values->norm_gyro_y -= state->error->gyro_err_y;
@@ -198,9 +198,11 @@ static esp_err_t read_gyro_values(gyro_values_t* values, bool apply_error) {
     state->gyro_pitch += values->norm_gyro_y * values->delta_micros / 1e6;
     state->gyro_yaw += values->norm_gyro_z * values->delta_micros / 1e6; 
 
-    values->roll_rads = 0.96 * state->gyro_roll + 0.04 * values->accel_x_component;
-    values->pitch_rads = 0.96 * state->gyro_pitch + 0.04 * values->accel_y_component;
-    values->yaw_rads = state->gyro_yaw;
+    values->roll_rads = (DEG_TO_RAD * 0.96 * state->gyro_roll) + 0.04 * values->accel_x_rads;
+    values->pitch_rads = (DEG_TO_RAD * 0.96 * state->gyro_pitch) + 0.04 * values->accel_y_rads;
+    values->yaw_rads = DEG_TO_RAD * state->gyro_yaw;
+
+    // ESP_LOGI(TAG, "Roll: %f, Pitch: %f, Yaw: %f", values->roll_rads, values->pitch_rads, values->yaw_rads);
 
     return ret;
 }
@@ -222,8 +224,8 @@ static esp_err_t measure_gyro_error(gyro_error_t* gyro_err) {
             continue;
         }
 
-        gyro_err->accel_err_x += ((atan((value_buffer->norm_accel_y) / sqrt(pow((value_buffer->norm_accel_x), 2) + pow((value_buffer->norm_accel_z), 2))) * 180 / PI));
-        gyro_err->accel_err_y += ((atan(-1 * (value_buffer->norm_accel_x) / sqrt(pow((value_buffer->norm_accel_y), 2) + pow((value_buffer->norm_accel_z), 2))) * 180 / PI));
+        gyro_err->accel_err_x += atan((value_buffer->norm_accel_y) / sqrt(pow((value_buffer->norm_accel_x), 2) + pow((value_buffer->norm_accel_z), 2)));
+        gyro_err->accel_err_y += atan(-1 * (value_buffer->norm_accel_x) / sqrt(pow((value_buffer->norm_accel_y), 2) + pow((value_buffer->norm_accel_z), 2)));
 
         gyro_err->gyro_err_x += value_buffer->norm_gyro_x;
         gyro_err->gyro_err_y += value_buffer->norm_gyro_y;

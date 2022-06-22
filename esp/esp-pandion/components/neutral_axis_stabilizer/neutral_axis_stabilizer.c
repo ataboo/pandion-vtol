@@ -19,13 +19,13 @@ esp_err_t neutral_axis_stabilizer_init() {
         return ESP_FAIL;
     }
     
-    pid_constants_t roll_v_k = {0.002, 0.0005, 0.0025};
-    pid_constants_t pitch_v_k = {0.04, 0.002, 0.0};
-    pid_constants_t yaw_v_k = {0.002, 0.0001, 0.0};
+    pid_constants_t roll_v_k = { config_db_get_float_def("ng_roll_vp", 0.002), config_db_get_float_def("ng_roll_vi", 0.0005), config_db_get_float_def("ng_roll_vd", 0.0025) };
+    pid_constants_t pitch_v_k = { config_db_get_float_def("ng_pitch_vp", 0.04), config_db_get_float_def("ng_pitch_vi", 0.002), config_db_get_float_def("ng_pitch_vd", 0.0) };
+    pid_constants_t yaw_v_k = { config_db_get_float_def("ng_yaw_vp", 0.002), config_db_get_float_def("ng_yaw_vi", 0.0001), config_db_get_float_def("ng_yaw_vd", 0.0) };
 
-    pid_constants_t roll_h_k = {0.002, 0.0005, 0.000};
-    pid_constants_t pitch_h_k = {0.04, 0.002, 0.0};
-    pid_constants_t yaw_h_k = {0.002, 0.0005, 0.0025};
+    pid_constants_t roll_h_k = { config_db_get_float_def("ng_roll_hp", 0.002), config_db_get_float_def("ng_roll_hi", 0.0005), config_db_get_float_def("ng_roll_hd", 0.000) };
+    pid_constants_t pitch_h_k = { config_db_get_float_def("ng_pitch_hp", 0.04), config_db_get_float_def("ng_pitch_hi", 0.002), config_db_get_float_def("ng_pitch_hd", 0.0) };
+    pid_constants_t yaw_h_k = { config_db_get_float_def("ng_yaw_hp", 0.002), config_db_get_float_def("ng_yaw_hi", 0.0005), config_db_get_float_def("ng_yaw_hd", 0.0025) };
 
     roll_pid_v = pid_init("x_axis", &roll_v_k);
     pitch_pid_v = pid_init("y_axis", &pitch_v_k);

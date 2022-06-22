@@ -31,7 +31,10 @@ esp_err_t pid_update(pid_handle_t handle, float target, float current) {
         handle_impl->integral_err * handle_impl->pid_constants->k_i +
         handle_impl->derivative_err * handle_impl->pid_constants->k_d;
 
-    // ESP_LOGE("CONSOLE_PLOTTER", "[%f, %f, %f]", current, target, handle_impl->output);
+    // if(strcmp(handle_impl->name, "px_axis") == 0) {
+        // ESP_LOGE("CONSOLE_PLOTTER", "[%f, %f, %f]", current, target, handle_impl->output);
+        // ESP_LOGE("CONSOLE_PLOTTER", "[p: %f, i: %f, d: %f]", handle_impl->pid_constants->k_p, handle_impl->pid_constants->k_i, handle_impl->pid_constants->k_d);
+    // }
 
     return ESP_OK;
 }

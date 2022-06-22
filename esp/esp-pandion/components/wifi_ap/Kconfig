@@ -1,0 +1,18 @@
+menu "WIFI AP Config"
+    config WIFI_AP_SSID
+        string "WiFi AP SSID"
+        default "pandion_ap"
+    
+    config WIFI_AP_PASSWORD
+        string "WIFI AP Password"
+        default "asdfasdf"
+
+    config WIFI_CHANNEL
+        int "WiFi Channel"
+        range 1 13
+        default 1
+
+    config WIFI_MAX_CONNECTIONS
+        int "Max Stations"
+        default 4
+endmenu

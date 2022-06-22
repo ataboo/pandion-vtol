@@ -157,7 +157,7 @@ static void update_yaw() {
 
 static void update_input_axes() {
     input_axes.roll = get_channel_duty(IBUS_RX_CHAN_ROLL);
-    input_axes.pitch = get_channel_duty(IBUS_RX_CHAN_PITCH);
+    input_axes.pitch = -get_channel_duty(IBUS_RX_CHAN_PITCH);
     input_axes.yaw = get_channel_duty(IBUS_RX_CHAN_RUDDER);
     
     input_axes.throttle = get_channel_duty(IBUS_RX_CHAN_THROTTLE);
@@ -182,9 +182,9 @@ static void update_input_axes() {
     }
 #endif
 
-    input_axes.roll = axis_curve_calculate(roll_curve_handle, input_axes.roll);
-    input_axes.pitch = axis_curve_calculate(pitch_curve_handle, input_axes.pitch);
-    input_axes.yaw = axis_curve_calculate(yaw_curve_handle, input_axes.yaw);
+    // input_axes.roll = axis_curve_calculate(roll_curve_handle, input_axes.roll);
+    // input_axes.pitch = axis_curve_calculate(pitch_curve_handle, input_axes.pitch);
+    // input_axes.yaw = axis_curve_calculate(yaw_curve_handle, input_axes.yaw);
 
     ESP_LOGD(TAG, "Roll %f, Pitch %f, Yaw %f, Throttle %f", input_axes.roll, input_axes.pitch, input_axes.yaw, input_axes.throttle);
 }
@@ -226,6 +226,8 @@ static void loop_task(void *arg) {
 }
 
 esp_err_t flight_control_init() {
+    ESP_ERROR_CHECK(config_db_init("pandion"));
+
 #ifdef PANDION_GYRO_ENABLED
     esp_err_t ret = gyro_control_init();
     if (ret != ESP_OK) {
@@ -234,6 +236,8 @@ esp_err_t flight_control_init() {
     }
 #endif
 
+    pandion_server_commands_init();
+    
     ESP_ERROR_CHECK_WITHOUT_ABORT(battery_meter_init());
 
     transition_state = TRANS_UNSET;
@@ -246,14 +250,17 @@ esp_err_t flight_control_init() {
     ibus_push_sensor(sensor_handle, &extv_sensor);
 
     servo_ctrl_channel_cfg_t servo_channel_cfgs[SERVO_CHAN_COUNT] = {
-        { 1050, 2050, CONFIG_RWTILT_GPIO },
-        { 1050, 2050, CONFIG_LWTILT_GPIO },
-        // Horiz -> Vert
-        { 940, 1950, CONFIG_RWTRANS_GPIO },
-        // Horiz -> Vert
-        { 950, 2000, CONFIG_LWTRANS_GPIO },
-        { 920, 2080, CONFIG_ELEVATOR_GPIO },
-        { 1000, 2000, CONFIG_RUDDER_GPIO }
+        { config_db_get_int_def("p_rwtilt_l", 1050), config_db_get_int_def("p_rwtilt_h", 2050), CONFIG_RWTILT_GPIO },
+        { config_db_get_int_def("p_lwtilt_l", 1050), config_db_get_int_def("p_lwtilt_h", 2050), CONFIG_LWTILT_GPIO },
+        
+        // Horiz ~1000 -> Vert ~2000
+        { config_db_get_int_def("p_rwtrans_l", 940), config_db_get_int_def("p_rwtrans_h", 1950), CONFIG_RWTRANS_GPIO },
+
+        // Vert 1000 -> Horiz 2000
+        { config_db_get_int_def("p_lwtrans_l", 950), config_db_get_int_def("p_lwtrans_h", 2000), CONFIG_LWTRANS_GPIO },
+
+        { config_db_get_int_def("p_elev_l", 920), config_db_get_int_def("p_elev_h", 2080), CONFIG_ELEVATOR_GPIO },
+        { config_db_get_int_def("p_rud_l", 1000), config_db_get_int_def("p_rud_h", 2000), CONFIG_RUDDER_GPIO }
     };
 
     servo_handle = servo_ctrl_init(servo_channel_cfgs, SERVO_CHAN_COUNT);
@@ -262,9 +269,9 @@ esp_err_t flight_control_init() {
     rw_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_RWPROP_GPIO, .rmt_chan = 1, .name = "Right" });
     aft_dshot = dshot_init((dshot_cfg){ .gpio_num = CONFIG_AFTPROP_GPIO, .rmt_chan = 2, .name = "Aft" });
 
-    roll_curve_handle = axis_curve_init(0.5);
-    pitch_curve_handle = axis_curve_init(0.2);
-    yaw_curve_handle = axis_curve_init(0.8);
+    roll_curve_handle = axis_curve_init(config_db_get_float_def("roll_curve", 0.5));
+    pitch_curve_handle = axis_curve_init(config_db_get_float_def("pitch_curve", 0.2));
+    yaw_curve_handle = axis_curve_init(config_db_get_float_def("yaw_curve", 0.8));
 
     positive_axis_stabilizer_init();
     neutral_axis_stabilizer_init();

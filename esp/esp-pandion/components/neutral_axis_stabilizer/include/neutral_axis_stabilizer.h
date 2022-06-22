@@ -4,6 +4,7 @@
 #include <esp_err.h>
 #include "flight_control_common.h"
 #include "gyro_control.h"
+#include "config_db.h"
 
 esp_err_t neutral_axis_stabilizer_init();
 
